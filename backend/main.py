@@ -3,7 +3,7 @@ import os
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 import dotenv
-from backend.util import db
+import util.db as db
 from util.dict_maker import convertDict
 from backend.types.body import Post
 import hashlib
