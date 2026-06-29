@@ -22,7 +22,6 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-
 @app.get('/')
 def test():
     raise HTTPException(404, "Hi")
@@ -47,8 +46,7 @@ def write_post(post: Post):
     params = (id, post.title, post.author, written_date, post.content, post.photo, view, like, post.place, post.tag)
     db.executeQuery(con, query, params)
 
-
-
+    raise HTTPException(200)
 
 if __name__ == "__main__":
     import uvicorn
