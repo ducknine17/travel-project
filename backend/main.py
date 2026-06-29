@@ -5,7 +5,7 @@ from fastapi.middleware.cors import CORSMiddleware
 import dotenv
 import util.db as db
 from util.dict_maker import convertDict
-from backend.types.body import Post
+from types.body import Post
 import hashlib
 import bcrypt
 import time
