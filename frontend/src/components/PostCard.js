@@ -1,33 +1,28 @@
 import { useNavigate } from "react-router-dom";
+import "../styles/PostCard.css";
 
 function PostCard({ post }) {
 
     const navigate = useNavigate();
 
     return (
+    <div
+    className="post-card"
+    onClick={()=>navigate(`/post/${post.id}`)}
+    >
+    <div className="post-image">
 
-        <div
-            onClick={()=>navigate(`/post/${post.id}`)}
-            style={{
-                width:"280px",
-                cursor:"pointer"
-            }}
-        >
+    대표사진
 
-            <img
-                src={post.photo[0]}
-                alt={post.place}
-                style={{
-                    width:"100%",
-                    height:"220px",
-                    objectFit:"cover",
-                    borderRadius:"12px"
-                }}
-            />
+    </div>
 
-            <p>📍 {post.place}</p>
+    <div className="post-place">
 
-        </div>
+    📍 {post.place}
+
+    </div>
+
+    </div>
 
     );
 

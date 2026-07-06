@@ -1,0 +1,33 @@
+.post-card {
+    width: 320px;
+    cursor: pointer;
+    border-radius: 16px;
+    overflow: hidden;
+    background: white;
+    box-shadow: 0 3px 12px rgba(0,0,0,0.08);
+    transition: 0.2s;
+}
+
+.post-card:hover {
+    transform: translateY(-6px);
+    box-shadow: 0 10px 25px rgba(0,0,0,0.15);
+}
+
+.post-image {
+    width: 100%;
+    height: 230px;
+    background: #eeeeee;
+
+    display:flex;
+    justify-content:center;
+    align-items:center;
+
+    font-size:18px;
+    color:#888;
+}
+
+.post-place {
+    padding:18px;
+    font-size:20px;
+    font-weight:bold;
+}
