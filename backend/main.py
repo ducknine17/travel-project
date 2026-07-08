@@ -1,13 +1,15 @@
 import datetime
-import os
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, UploadFile, File
 from fastapi.middleware.cors import CORSMiddleware
-import dotenv
-import util.db as db
-from util.dict_maker import convertDict
-from util.body import Post
+from fastapi.responses import FileResponse
+from util.maker import convertDict
+from util.body import *
+from auth.checker import *
+from auth.email_manager import *
 import hashlib
+import bcrypt
 import time
+import shutil
 
 dotenv.load_dotenv("../.env")
 
@@ -46,6 +48,89 @@ def write_post(post: Post):
     db.executeQuery(con, query, params)
 
     raise HTTPException(200)
+
+
+@app.put("/edit-post")
+def edit_post(post: PostEdit):
+    written_date = datetime.datetime.now()
+
+    if postChecker(post.id, post.author):
+        raise HTTPException(404, "post not found")
+
+    con = db.connect()
+    query = "UPDATE post.post SET title = %s, written_date = %s, content = %s, place = %s, photo = %s,  tag = %s WHERE id = %s AND author = %s"
+    params = (post.title, written_date, post.content, post.place, post.photo, post.tag, post.id, post.author)
+    db.executeQuery(con, query, params)
+
+    raise HTTPException(200)
+
+@app.delete("/delete-post")
+def delete_post(post: PostEdit):
+    if postChecker(post.id, post.author):
+        raise HTTPException(404, "post not found")
+
+    con = db.connect()
+    query = "DELETE FROM post.post WHERE id = %s AND author = %s"
+    params = (post.id, post.author)
+    db.executeQuery(con, query, params)
+
+    raise HTTPException(200)
+
+@app.post("/register")
+def register(user: UserRegister):
+    uid = idMaker()
+    password_hashed = bcrypt.hashpw(user.password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
+    if not registerChecker(user.id):
+        raise HTTPException(409, "id already exists")
+
+    con = db.connect()
+    query = "INSERT INTO user.user (uid, id, password, written_post, liked_post, email, is_available)"
+    params = (uid, user.id, password_hashed, [], [], user.email, False)
+    db.executeQuery(con, query, params)
+
+    raise HTTPException(200)
+
+@app.post("/login")
+def login(user: UserLogin):
+    if not loginChecker(user.id, user.password):
+        raise HTTPException(403, "not valid user")
+
+    raise HTTPException(200)
+
+@app.get("/validate/{id}")
+def validate(id):
+    if not validateChecker(id):
+        raise HTTPException(403, "not valid link")
+
+    raise HTTPException(200)
+
+@app.get("/image/{id}")
+def image(id):
+    for img in os.listdir("../image"):
+        if id in img:
+            return FileResponse(f"../image/{img}")
+
+    raise HTTPException(404, "image does not exist")
+
+
+@app.post("/upload-image/")
+async def upload_image(file: UploadFile = File(...)):
+    # Validate that the file is an image
+    if not file.content_type.startswith("image/"):
+        raise HTTPException(status_code=400, detail="File provided is not an image.")
+
+    filetype = file.filename.split(".")[-1]
+    filename = idMaker()
+    destination = f"../image/{filename}.{filetype}"
+
+    # Save the file to disk safely
+    with open(destination, "wb") as buffer:
+        shutil.copyfileobj(file.file, buffer)
+
+    return {
+        "filename": file.filename,
+        "content_type": file.content_type
+    }
 
 if __name__ == "__main__":
     import uvicorn

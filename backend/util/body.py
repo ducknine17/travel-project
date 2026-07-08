@@ -1,5 +1,4 @@
 from pydantic import BaseModel
-import datetime
 
 class Post(BaseModel):
     title: str
@@ -8,3 +7,21 @@ class Post(BaseModel):
     photo: list
     place: str
     tag: list
+
+class PostEdit(BaseModel):
+    id: str
+    author: str
+    title: str
+    content: str
+    photo: list
+    place: str
+    tag: list
+
+class UserRegister(BaseModel):
+    id: str
+    password: str
+    email: str
+
+class UserLogin(BaseModel):
+    id: str
+    password: str

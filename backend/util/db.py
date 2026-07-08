@@ -17,13 +17,18 @@ def connect():
     except:
         return False
 
+
 def executeQuery(connect, query, params=None):
     cur = connect.cursor()
+
     if params:
         cur.execute(query, params)
-        connect.commit()
-        return
     else:
         cur.execute(query)
+
+    if query.strip().upper().startswith("SELECT"):
         result = cur.fetchall()
         return result
+    else:
+        connect.commit()
+        return None
