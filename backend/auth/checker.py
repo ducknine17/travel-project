@@ -14,8 +14,8 @@ def postChecker(id, author):
 def registerChecker(id):
     con = connect()
     query = "SELECT * FROM user.user WHERE id = %s"
-    res = executeQuery(con, query, (id, ))
-    if res is None:
+    res = executeQuery(con, query, (id,))
+    if res == []:
         return False
 
     return True
@@ -23,20 +23,23 @@ def registerChecker(id):
 def loginChecker(id, password):
     con = connect()
     query = "SELECT password FROM user.user WHERE id = %s"
-    res = executeQuery(con, query, id)
-    if res is None:
+    res = executeQuery(con, query, (id,))
+    if res == []:
         return False
 
     pw = res[0][0]
 
-    return bcrypt.checkpw(password, pw)
+    return bcrypt.checkpw(
+        password.encode("utf-8"),
+        pw.encode("utf-8")
+    )
 
 
 def validateChecker(id):
     con = connect()
     query = "SELECT * FROM \"user\".validate WHERE id = %s"
     res = executeQuery(con, query, (id, ))
-    if res is None:
+    if res == []:
         return False
 
     if res[0][2] == True:

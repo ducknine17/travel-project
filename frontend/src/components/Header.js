@@ -16,7 +16,16 @@ function Header() {
 
       <a href="/">지도</a>
 
-      <a href="/">로그인</a>
+      <div
+        style={{
+          marginLeft: "auto",
+          display: "flex",
+          gap: "20px",
+        }}
+      >
+        <Link to="/login">로그인</Link>
+        <Link to="/register">회원가입</Link>
+      </div>
     </header>
   );
 }

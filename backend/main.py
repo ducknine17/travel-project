@@ -54,7 +54,7 @@ def write_post(post: Post):
 def edit_post(post: PostEdit):
     written_date = datetime.datetime.now()
 
-    if postChecker(post.id, post.author):
+    if not postChecker(post.id, post.author):
         raise HTTPException(404, "post not found")
 
     con = db.connect()
@@ -66,7 +66,7 @@ def edit_post(post: PostEdit):
 
 @app.delete("/delete-post")
 def delete_post(post: PostEdit):
-    if postChecker(post.id, post.author):
+    if not postChecker(post.id, post.author):
         raise HTTPException(404, "post not found")
 
     con = db.connect()
@@ -80,7 +80,7 @@ def delete_post(post: PostEdit):
 def register(user: UserRegister):
     uid = idMaker()
     password_hashed = bcrypt.hashpw(user.password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
-    if not registerChecker(user.id):
+    if registerChecker(user.id):
         raise HTTPException(409, "id already exists")
 
     con = db.connect()
