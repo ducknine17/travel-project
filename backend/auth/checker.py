@@ -13,7 +13,7 @@ def postChecker(id, author):
 
 def registerChecker(id):
     con = connect()
-    query = "SELECT * FROM user.user WHERE id = %s"
+    query = "SELECT * FROM \"user\".user WHERE id = %s"
     res = executeQuery(con, query, (id,))
     if res == []:
         return False
@@ -22,7 +22,7 @@ def registerChecker(id):
 
 def loginChecker(id, password):
     con = connect()
-    query = "SELECT password FROM user.user WHERE id = %s"
+    query = "SELECT password FROM \"user\".user WHERE id = %s"
     res = executeQuery(con, query, (id,))
     if res == []:
         return False
