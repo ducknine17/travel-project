@@ -1,11 +1,13 @@
 import datetime
-from fastapi import FastAPI, HTTPException, UploadFile, File
+from fastapi import Depends, FastAPI, HTTPException, UploadFile, File
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
+from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from util.maker import convertDict
 from util.body import *
 from auth.checker import *
 from auth.email_manager import *
+from auth.jwt_manager import create_access_token, get_current_user_id
 import hashlib
 import bcrypt
 import time
@@ -14,6 +16,7 @@ import shutil
 dotenv.load_dotenv("../.env")
 
 app = FastAPI()
+security = HTTPBearer()
 
 app.add_middleware(
     CORSMiddleware,
@@ -95,7 +98,21 @@ def login(user: UserLogin):
     if not loginChecker(user.id, user.password):
         raise HTTPException(403, "not valid user")
 
-    raise HTTPException(200)
+    access_token = create_access_token(user.id)
+    return {
+        "access_token": access_token,
+        "token_type": "bearer",
+        "user": {
+            "id": user.id
+        }
+    }
+
+@app.get("/me")
+def me(credentials: HTTPAuthorizationCredentials = Depends(security)):
+    user_id = get_current_user_id(credentials)
+    return {
+        "id": user_id
+    }
 
 @app.get("/validate/{id}")
 def validate(id):
