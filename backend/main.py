@@ -91,7 +91,7 @@ def register(user: UserRegister):
         raise HTTPException(409, "id already exists")
 
     con = db.connect()
-    query = "INSERT INTO \"user\".user (uid, id, password, written_post, liked_post, email, is_available)"
+    query = "INSERT INTO \"user\".user (uid, id, password, written_post, liked_post, email, is_available) VALUES (%s, %s, %s, %s, %s, %s, %s)"
     params = (uid, user.id, password_hashed, [], [], user.email, False)
     db.executeQuery(con, query, params)
 
