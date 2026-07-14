@@ -32,9 +32,9 @@ function RegisterPage() {
 
       try {
           await api.post("/register", {
-              id,
-              email,
-              password,
+              "id": id,
+              "email": email,
+              "password": password,
           });
 
           // 회원가입 성공 후 인증 메일 발송
