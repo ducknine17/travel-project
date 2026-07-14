@@ -1,6 +1,7 @@
 import SortablePhoto from "../components/SortablePhoto";
-import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useState, useEffect } from "react";
+import { useNavigate, useParams } from "react-router-dom";
+import api from "../services/api";
 
 import {
   DndContext,
@@ -18,7 +19,13 @@ function WritePage() {
   const [content, setContent] = useState("");
   const [place, setPlace] = useState("");
   const navigate = useNavigate();
+  const { id } = useParams();
   const [tags, setTags] = useState([]);
+  useEffect(() => {
+      if (id) {
+          loadPost();
+      }
+  }, [id]);
   const tagList = [
     "♿ 휠체어",
     "🛗 엘리베이터",
@@ -61,6 +68,19 @@ function WritePage() {
     const newIndex = photos.findIndex((p) => p.id === over.id);
     setPhotos(arrayMove(photos, oldIndex, newIndex));
   };
+  const loadPost = async () => {
+    try {
+      const res = await api.get("/load-post");
+      const foundPost = res.data.find((p) => p.id === id);
+      if (!foundPost) return;
+      setTitle(foundPost.title);
+      setContent(foundPost.content);
+      setPlace(foundPost.place);
+      setTags(foundPost.tag);
+    } catch (error) {
+      console.error(error);
+    }
+  };
   const handleSubmit = async () => {
     if (!title.trim()) {
       alert("제목을 입력해주세요.");
@@ -76,7 +96,7 @@ function WritePage() {
     }
     const postData = {
       title,
-      author: "testUser", // 로그인 붙이면 여기만 변경
+      author: "testUser",  // 로그인 붙이면 여기만 변경
       content,
       photo: photos.map((photo) => photo.file.name), // 임시
       place,
@@ -84,27 +104,29 @@ function WritePage() {
     };
     console.log(postData);
     try {
-      const response = await fetch("http://localhost:8000/write-post", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(postData),
-      });
-      if (!response.ok) {
-        throw new Error("등록 실패");
-      }
-      alert("게시글이 등록되었습니다.");
-      navigate("/");
+        if (id) {
+            await api.put("/edit-post", {
+                id,
+                ...postData,
+            });
+
+            alert("게시글이 수정되었습니다.");
+        } else {
+            await api.post("/write-post", postData);
+
+            alert("게시글이 등록되었습니다.");
+        }
+
+        navigate("/");
     } catch (error) {
     console.error(error);
-    alert("게시글 등록 중 오류가 발생했습니다.");
-  }
+    alert("게시글 처리 중 오류가 발생했습니다.");
+}
 };
 
   return (
     <div style={{ maxWidth: "900px", margin: "40px auto" }}>
-      <h1>글쓰기</h1>
+      <h1>{id ? "글 수정" : "글쓰기"}</h1>
 
       <hr />
 
@@ -226,7 +248,7 @@ function WritePage() {
         }}
       >
         <button onClick={handleSubmit}>
-          등록
+          {id ? "수정" : "등록"}
         </button>
       </div>
     </div>

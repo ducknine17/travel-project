@@ -10,10 +10,14 @@ function LoginPage() {
 
   const login = async () => {
     try {
-      await api.post("/login", {
+      const res = await api.post("/login", {
         id,
         password,
       });
+
+      // JWT 저장
+      localStorage.setItem("token", res.data.access_token);
+      localStorage.setItem("userId", res.data.user.id);
 
       alert("로그인 성공!");
       navigate("/");

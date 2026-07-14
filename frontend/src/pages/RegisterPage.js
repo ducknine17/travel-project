@@ -1,14 +1,15 @@
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { useState } from "react";
+import api from "../services/api";
 
 function RegisterPage() {
   const [id, setId] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [passwordCheck, setPasswordCheck] = useState("");
+  const navigate = useNavigate();
 
   const register = async () => {
-
       if (!id) {
           alert("아이디를 입력해주세요.");
           return;
@@ -29,8 +30,30 @@ function RegisterPage() {
           return;
       }
 
-      alert("검사 완료! (API 연결 예정)");
-  };
+      try {
+          await api.post("/register", {
+              id,
+              email,
+              password,
+          });
+
+          // 회원가입 성공 후 인증 메일 발송
+          await api.post("/send-email", {
+              id,
+          });
+
+          alert("회원가입이 완료되었습니다.\n인증 메일을 확인해주세요.");
+          navigate("/login");
+                } catch (error) {
+                    console.error(error);
+
+                    if (error.response?.status === 409) {
+                        alert("이미 존재하는 아이디입니다.");
+                    } else {
+                        alert("회원가입에 실패했습니다.");
+                    }
+                }
+            };
 
 
   return (

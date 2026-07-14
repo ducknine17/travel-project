@@ -93,6 +93,25 @@ def register(user: UserRegister):
 
     raise HTTPException(200)
 
+@app.post("/send-email")
+def send_email_link(req: EmailRequest):
+    con = db.connect()
+
+    query = 'SELECT uid, email FROM "user".user WHERE id = %s'
+    result = db.executeQuery(con, query, (req.id,))
+
+    if len(result) == 0:
+        raise HTTPException(404, "user not found")
+
+    uid = result[0][0]
+    email = result[0][1]
+
+    send_link(uid, email)
+
+    return {
+        "message": "인증 메일을 발송했습니다."
+    }
+
 @app.post("/login")
 def login(user: UserLogin):
     if not loginChecker(user.id, user.password):

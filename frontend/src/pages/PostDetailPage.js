@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useParams } from "react-router-dom";
+import { useParams, useNavigate } from "react-router-dom";
 import api from "../services/api";
 
 function PostDetailPage() {
@@ -8,7 +8,10 @@ function PostDetailPage() {
 
   const [post, setPost] = useState(null);
 
-  // 👇 여기에 넣기
+  const loginUser = localStorage.getItem("userId");
+
+  const navigate = useNavigate();
+
   useEffect(() => {
     loadPost();
   }, []);
@@ -26,7 +29,31 @@ function PostDetailPage() {
     }
   };
 
-  // 👇 이것도 여기
+  const editPost = () => {
+      navigate(`/edit/${post.id}`);
+  };
+
+  const deletePost = async () => {
+      if (!window.confirm("정말 삭제하시겠습니까?")) {
+          return;
+      }
+
+      try {
+          await api.delete("/delete-post", {
+              data: {
+                  id: post.id,
+                  author: post.author,
+              },
+          });
+
+          alert("게시글이 삭제되었습니다.");
+          navigate("/");
+      } catch (error) {
+          console.error(error);
+          alert("삭제에 실패했습니다.");
+      }
+  };
+
   if (!post) {
     return <div style={{ padding: "30px" }}>불러오는 중...</div>;
   }
@@ -46,6 +73,29 @@ function PostDetailPage() {
       <p>작성자 : {post.author}</p>
       <p>좋아요 : {post.likes}</p>
       <p>조회수 : {post.views}</p>
+      {loginUser === post.author && (
+        <div style={{ marginTop: "20px" }}>
+          <button
+              onClick={editPost}
+              style={{
+                  marginRight: "10px",
+                  padding: "8px 16px",
+                  cursor: "pointer",
+              }}
+          >
+              수정
+          </button>
+          <button
+            onClick={deletePost}
+            style={{
+              padding: "8px 16px",
+              cursor: "pointer",
+            }}
+          >
+            삭제
+          </button>
+        </div>
+      )}
     </div>
   );
 }
