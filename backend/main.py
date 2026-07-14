@@ -20,7 +20,11 @@ security = HTTPBearer()
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=['*'],
+    allow_origins=[
+        "http://localhost:3000",
+        "http://127.0.0.1:3000"
+        "https://bef-trip.my",
+    ],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -87,7 +91,7 @@ def register(user: UserRegister):
         raise HTTPException(409, "id already exists")
 
     con = db.connect()
-    query = "INSERT INTO user.user (uid, id, password, written_post, liked_post, email, is_available)"
+    query = "INSERT INTO \"user\".user (uid, id, password, written_post, liked_post, email, is_available)"
     params = (uid, user.id, password_hashed, [], [], user.email, False)
     db.executeQuery(con, query, params)
 
