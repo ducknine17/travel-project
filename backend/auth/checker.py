@@ -22,17 +22,20 @@ def registerChecker(id):
 
 def loginChecker(id, password):
     con = connect()
-    query = "SELECT password FROM \"user\".user WHERE id = %s"
+    query = "SELECT uid, password FROM \"user\".user WHERE id = %s"
     res = executeQuery(con, query, (id,))
     if res == []:
-        return False
+        return None
 
-    pw = res[0][0]
+    uid, pw = res[0]
 
-    return bcrypt.checkpw(
+    if not bcrypt.checkpw(
         password.encode("utf-8"),
         pw.encode("utf-8")
-    )
+    ):
+        return None
+
+    return uid
 
 
 def validateChecker(id):
@@ -49,7 +52,7 @@ def validateChecker(id):
     query = "UPDATE \"user\".validate SET is_used = true WHERE id = %s"
     res = executeQuery(con, query, (id, ))
 
-    query = "UPDATE \"user\".user SET is_available = true WHERE id = %s"
+    query = "UPDATE \"user\".user SET is_available = true WHERE uid = %s"
     res = executeQuery(con, query, (uid,))
 
     return True

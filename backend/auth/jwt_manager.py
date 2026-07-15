@@ -29,10 +29,10 @@ def _base64url_decode(data: str) -> bytes:
     return base64.urlsafe_b64decode(data + padding)
 
 
-def create_access_token(user_id: str) -> str:
+def create_access_token(uid: str) -> str:
     now = datetime.datetime.now(datetime.timezone.utc)
     payload = {
-        "sub": user_id,
+        "sub": uid,
         "iat": int(now.timestamp()),
         "exp": int((now + datetime.timedelta(minutes=_jwt_expire_minutes())).timestamp()),
     }
@@ -76,8 +76,8 @@ def verify_access_token(token: str) -> dict:
 
 def get_current_user_id(credentials: HTTPAuthorizationCredentials) -> str:
     payload = verify_access_token(credentials.credentials)
-    user_id = payload.get("sub")
-    if not user_id:
+    uid = payload.get("sub")
+    if not uid:
         raise HTTPException(status_code=401, detail="invalid token")
 
-    return user_id
+    return uid

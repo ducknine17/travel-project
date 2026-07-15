@@ -118,23 +118,25 @@ def send_email_link(req: EmailRequest):
 
 @app.post("/login")
 def login(user: UserLogin):
-    if not loginChecker(user.id, user.password):
+    uid = loginChecker(user.id, user.password)
+    if uid is None:
         raise HTTPException(403, "not valid user")
 
-    access_token = create_access_token(user.id)
+    access_token = create_access_token(uid)
     return {
         "access_token": access_token,
         "token_type": "bearer",
         "user": {
-            "id": user.id
+            "id": user.id,
+            "uid": uid
         }
     }
 
 @app.get("/me")
 def me(credentials: HTTPAuthorizationCredentials = Depends(security)):
-    user_id = get_current_user_id(credentials)
+    uid = get_current_user_id(credentials)
     return {
-        "id": user_id
+        "uid": uid
     }
 
 @app.get("/validate/{id}")
