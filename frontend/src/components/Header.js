@@ -14,7 +14,7 @@ function Header() {
 
       <Link to="/write">글쓰기</Link>
 
-      <a href="/">지도</a>
+      <Link to="/map">지도</Link>
 
       <div
         style={{
