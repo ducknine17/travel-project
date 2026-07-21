@@ -11,9 +11,22 @@ function PostCard({ post }) {
     onClick={()=>navigate(`/post/${post.id}`)}
     >
     <div className="post-image">
+        {post.photo && post.photo.length > 0 && (
+            <img
+                src={`http://localhost:8000/image/${post.photo[0]}`}
+                alt="대표사진"
+                style={{
+                    width: "100%",
+                    height: "100%",
+                    objectFit: "cover",
+                    borderRadius: "10px",
+                }}
+            />
+        )}
+    </div>
 
-    대표사진
-
+    <div className="post-title">
+        {post.title}
     </div>
 
     <div className="post-place">
@@ -21,6 +34,7 @@ function PostCard({ post }) {
     📍 {post.place}
 
     </div>
+    <pre>{JSON.stringify(post.photo, null, 2)}</pre>
 
     </div>
 

@@ -82,46 +82,65 @@ function WritePage() {
     }
   };
   const handleSubmit = async () => {
-    if (!title.trim()) {
-      alert("제목을 입력해주세요.");
-      return;
-    }
-    if (!content.trim()) {
-      alert("내용을 입력해주세요.");
-      return;
-    }
-    if (photos.length === 0) {
-      alert("사진을 1장 이상 등록해주세요.");
-      return;
-    }
-    const postData = {
-      title,
-      content,
-      photo: photos.map((photo) => photo.file.name), // 임시
-      place,
-      tag: tags,
-    };
-    console.log(postData);
-    try {
-        if (id) {
-            await api.put("/edit-post", {
-                id,
-                ...postData,
-            });
+      if (!title.trim()) {
+          alert("제목을 입력해주세요.");
+          return;
+      }
 
-            alert("게시글이 수정되었습니다.");
-        } else {
-            await api.post("/write-post", postData);
+      if (!content.trim()) {
+          alert("내용을 입력해주세요.");
+          return;
+      }
 
-            alert("게시글이 등록되었습니다.");
-        }
+      if (photos.length === 0) {
+          alert("사진을 1장 이상 등록해주세요.");
+          return;
+      }
 
-        navigate("/");
-    } catch (error) {
-    console.error(error);
-    alert("게시글 처리 중 오류가 발생했습니다.");
-}
-};
+      try {
+          // 사진 먼저 업로드
+          const uploadedPhotos = [];
+
+          for (const photo of photos) {
+              const formData = new FormData();
+              formData.append("file", photo.file);
+
+              const res = await api.post("/upload-image/", formData);
+
+              uploadedPhotos.push(res.data.filename);
+          }
+
+          // 게시글 데이터
+          const postData = {
+              title,
+              content,
+              photo: uploadedPhotos,
+              place,
+              tag: tags,
+          };
+
+          console.log(postData);
+
+          if (id) {
+              await api.put("/edit-post", {
+                  id,
+                  ...postData,
+              });
+
+              alert("게시글이 수정되었습니다.");
+          } else {
+              await api.post("/write-post", postData);
+
+              alert("게시글이 등록되었습니다.");
+          }
+
+          navigate("/");
+
+      } catch (error) {
+          console.error(error);
+          alert("게시글 처리 중 오류가 발생했습니다.");
+      }
+  };
 
   return (
     <div style={{ maxWidth: "900px", margin: "40px auto" }}>

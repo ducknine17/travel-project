@@ -15,9 +15,13 @@ function LoginPage() {
         password,
       });
 
+      console.log(res.data);
+
       // JWT 저장
+
       localStorage.setItem("token", res.data.access_token);
-      localStorage.setItem("userId", res.data.user.id);
+      localStorage.setItem("userId", res.data.user.uid);   // 내부 식별자
+      localStorage.setItem("username", res.data.user.id);  // 로그인 아이디
 
       alert("로그인 성공!");
       navigate("/");

@@ -190,6 +190,7 @@ async def upload_image(
 
     filetype = file.filename.split(".")[-1]
     filename = idMaker()
+    saved_filename = f"{filename}.{filetype}"
     destination = f"../image/{filename}.{filetype}"
 
     # Save the file to disk safely
@@ -197,7 +198,7 @@ async def upload_image(
         shutil.copyfileobj(file.file, buffer)
 
     return {
-        "filename": file.filename,
+        "filename": saved_filename,
         "content_type": file.content_type
     }
 
