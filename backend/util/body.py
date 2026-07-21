@@ -2,7 +2,6 @@ from pydantic import BaseModel
 
 class Post(BaseModel):
     title: str
-    author: str
     content: str
     photo: list
     place: str
@@ -10,12 +9,14 @@ class Post(BaseModel):
 
 class PostEdit(BaseModel):
     id: str
-    author: str
     title: str
     content: str
     photo: list
     place: str
     tag: list
+
+class PostDelete(BaseModel):
+    id: str
 
 class UserRegister(BaseModel):
     id: str

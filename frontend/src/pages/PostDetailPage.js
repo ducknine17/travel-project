@@ -42,7 +42,6 @@ function PostDetailPage() {
           await api.delete("/delete-post", {
               data: {
                   id: post.id,
-                  author: post.author,
               },
           });
 

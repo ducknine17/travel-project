@@ -2,7 +2,6 @@ import datetime
 from fastapi import Depends, FastAPI, HTTPException, UploadFile, File
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
-from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from util.maker import convertDict
 from util.body import *
 from auth.checker import *
@@ -16,7 +15,6 @@ import shutil
 dotenv.load_dotenv("../.env")
 
 app = FastAPI()
-security = HTTPBearer()
 
 app.add_middleware(
     CORSMiddleware,
@@ -35,7 +33,7 @@ def test():
     raise HTTPException(404, "Hi")
 
 @app.get("/load-post")
-def load_post():
+def load_post(_uid: str = Depends(get_current_user_id)):
     con = db.connect()
     result = db.executeQuery(con, "SELECT * FROM post.post")
     res = []
@@ -44,41 +42,68 @@ def load_post():
     return res
 
 @app.post("/write-post")
-def write_post(post: Post):
+def write_post(post: Post, uid: str = Depends(get_current_user_id)):
     id = hashlib.md5(str(time.time()).encode("utf-8")).hexdigest()
     written_date = datetime.datetime.now()
     view, like = 0, 0
 
     con = db.connect()
+    user_result = db.executeQuery(
+        con,
+        'SELECT id FROM "user".user WHERE uid = %s',
+        (uid,),
+    )
+    if not user_result:
+        raise HTTPException(401, "user not found")
+
+    author = user_result[0][0]
     query = "INSERT INTO post.post (id, title, author, written_date, content, photo, views, likes, place, tag) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)"
-    params = (id, post.title, post.author, written_date, post.content, post.photo, view, like, post.place, post.tag)
+    params = (id, post.title, author, written_date, post.content, post.photo, view, like, post.place, post.tag)
     db.executeQuery(con, query, params)
 
     raise HTTPException(200)
 
 
 @app.put("/edit-post")
-def edit_post(post: PostEdit):
+def edit_post(post: PostEdit, uid: str = Depends(get_current_user_id)):
     written_date = datetime.datetime.now()
 
-    if not postChecker(post.id, post.author):
+    con = db.connect()
+    user_result = db.executeQuery(
+        con,
+        'SELECT id FROM "user".user WHERE uid = %s',
+        (uid,),
+    )
+    if not user_result:
+        raise HTTPException(401, "user not found")
+
+    author = user_result[0][0]
+    if not postChecker(post.id, author):
         raise HTTPException(404, "post not found")
 
-    con = db.connect()
     query = "UPDATE post.post SET title = %s, written_date = %s, content = %s, place = %s, photo = %s,  tag = %s WHERE id = %s AND author = %s"
-    params = (post.title, written_date, post.content, post.place, post.photo, post.tag, post.id, post.author)
+    params = (post.title, written_date, post.content, post.place, post.photo, post.tag, post.id, author)
     db.executeQuery(con, query, params)
 
     raise HTTPException(200)
 
 @app.delete("/delete-post")
-def delete_post(post: PostEdit):
-    if not postChecker(post.id, post.author):
+def delete_post(post: PostDelete, uid: str = Depends(get_current_user_id)):
+    con = db.connect()
+    user_result = db.executeQuery(
+        con,
+        'SELECT id FROM "user".user WHERE uid = %s',
+        (uid,),
+    )
+    if not user_result:
+        raise HTTPException(401, "user not found")
+
+    author = user_result[0][0]
+    if not postChecker(post.id, author):
         raise HTTPException(404, "post not found")
 
-    con = db.connect()
     query = "DELETE FROM post.post WHERE id = %s AND author = %s"
-    params = (post.id, post.author)
+    params = (post.id, author)
     db.executeQuery(con, query, params)
 
     raise HTTPException(200)
@@ -133,8 +158,7 @@ def login(user: UserLogin):
     }
 
 @app.get("/me")
-def me(credentials: HTTPAuthorizationCredentials = Depends(security)):
-    uid = get_current_user_id(credentials)
+def me(uid: str = Depends(get_current_user_id)):
     return {
         "uid": uid
     }
@@ -156,7 +180,10 @@ def image(id):
 
 
 @app.post("/upload-image/")
-async def upload_image(file: UploadFile = File(...)):
+async def upload_image(
+    file: UploadFile = File(...),
+    _uid: str = Depends(get_current_user_id),
+):
     # Validate that the file is an image
     if not file.content_type.startswith("image/"):
         raise HTTPException(status_code=400, detail="File provided is not an image.")

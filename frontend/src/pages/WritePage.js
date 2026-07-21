@@ -96,7 +96,6 @@ function WritePage() {
     }
     const postData = {
       title,
-      author: "testUser",  // 로그인 붙이면 여기만 변경
       content,
       photo: photos.map((photo) => photo.file.name), // 임시
       place,

@@ -4,16 +4,24 @@ import hashlib
 import hmac
 import json
 import os
+from pathlib import Path
+from typing import Optional
 
-from fastapi import HTTPException
-from fastapi.security import HTTPAuthorizationCredentials
+import dotenv
+from fastapi import Depends, HTTPException
+from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 
 
 JWT_ALGORITHM = "HS256"
+security = HTTPBearer(auto_error=False)
+dotenv.load_dotenv(Path(__file__).resolve().parents[2] / ".env")
 
 
 def _jwt_secret_key() -> str:
-    return os.environ.get("JWT_SECRET_KEY") or os.environ.get("SECRET_KEY") or "change-this-jwt-secret"
+    secret_key = os.environ.get("JWT_SECRET_KEY") or os.environ.get("SECRET_KEY")
+    if not secret_key:
+        raise RuntimeError("JWT_SECRET_KEY is not configured")
+    return secret_key
 
 
 def _jwt_expire_minutes() -> int:
@@ -74,7 +82,12 @@ def verify_access_token(token: str) -> dict:
         raise HTTPException(status_code=401, detail="invalid token")
 
 
-def get_current_user_id(credentials: HTTPAuthorizationCredentials) -> str:
+def get_current_user_id(
+    credentials: Optional[HTTPAuthorizationCredentials] = Depends(security),
+) -> str:
+    if credentials is None:
+        raise HTTPException(status_code=401, detail="authentication required")
+
     payload = verify_access_token(credentials.credentials)
     uid = payload.get("sub")
     if not uid:

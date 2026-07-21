@@ -1,21 +1,19 @@
 import psycopg2
 import os
 import dotenv
+from pathlib import Path
 
-dotenv.load_dotenv("../../.env")
+dotenv.load_dotenv(Path(__file__).resolve().parents[2] / ".env")
 
 def connect():
-    try:
-        connection = psycopg2.connect(
-            host=os.environ.get("DB_HOST"),
-            database=os.environ.get("DB_DATABASE"),
-            port=os.environ.get("DB_PORT"),
-            user=os.environ.get("DB_USER"),
-            password=os.environ.get("DB_PASSWORD")
-        )
-        return connection
-    except:
-        return False
+    connection = psycopg2.connect(
+        host=os.environ.get("DB_HOST"),
+        database=os.environ.get("DB_DATABASE"),
+        port=os.environ.get("DB_PORT"),
+        user=os.environ.get("DB_USER"),
+        password=os.environ.get("DB_PASSWORD")
+    )
+    return connection
 
 
 def executeQuery(connect, query, params=None):
