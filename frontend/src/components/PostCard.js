@@ -1,5 +1,6 @@
 import { useNavigate } from "react-router-dom";
 import "../styles/PostCard.css";
+import api from "../services/api";
 
 function PostCard({ post }) {
 
@@ -13,7 +14,7 @@ function PostCard({ post }) {
     <div className="post-image">
         {post.photo && post.photo.length > 0 && (
             <img
-                src={`http://localhost:8000/image/${post.photo[0]}`}
+                src={`${api.defaults.baseURL}/image/${encodeURIComponent(post.photo[0])}`}
                 alt="대표사진"
                 style={{
                     width: "100%",
