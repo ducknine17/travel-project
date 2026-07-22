@@ -108,6 +108,14 @@ def delete_post(post: PostDelete, uid: str = Depends(get_current_user_id)):
 
     raise HTTPException(200)
 
+@app.get("/check-id/{id}")
+def check_id(id: str):
+    exists = registerChecker(id)
+
+    return {
+        "available": not exists
+    }
+
 @app.post("/register")
 def register(user: UserRegister):
     uid = idMaker()
@@ -121,6 +129,53 @@ def register(user: UserRegister):
     db.executeQuery(con, query, params)
 
     raise HTTPException(200)
+
+@app.put("/edit-user")
+def edit_user(user: UserEdit, uid: str = Depends(get_current_user_id)):
+    con = db.connect()
+
+    # 현재 로그인한 사용자 조회
+    result = db.executeQuery(
+        con,
+        'SELECT id FROM "user".user WHERE uid = %s',
+        (uid,)
+    )
+
+    if len(result) == 0:
+        raise HTTPException(404, "user not found")
+
+    current_id = result[0][0]
+
+    # 아이디가 변경되었으면 중복 검사
+    if user.id != current_id and registerChecker(user.id):
+        raise HTTPException(409, "id already exists")
+
+    password_hashed = bcrypt.hashpw(
+        user.password.encode("utf-8"),
+        bcrypt.gensalt()
+    ).decode("utf-8")
+
+    query = '''
+    UPDATE "user".user
+    SET id = %s,
+        password = %s
+    WHERE uid = %s
+    '''
+
+    db.executeQuery(
+        con,
+        query,
+        (
+            user.id,
+            password_hashed,
+            uid,
+        )
+    )
+
+    return {
+        "message": "success"
+    }
+
 
 @app.post("/send-email")
 def send_email_link(req: EmailRequest):
