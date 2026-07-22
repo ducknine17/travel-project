@@ -134,22 +134,6 @@ def register(user: UserRegister):
 def edit_user(user: UserEdit, uid: str = Depends(get_current_user_id)):
     con = db.connect()
 
-    # 현재 로그인한 사용자 조회
-    result = db.executeQuery(
-        con,
-        'SELECT id FROM "user".user WHERE uid = %s',
-        (uid,)
-    )
-
-    if len(result) == 0:
-        raise HTTPException(404, "user not found")
-
-    current_id = result[0][0]
-
-    # 아이디가 변경되었으면 중복 검사
-    if user.id != current_id and registerChecker(user.id):
-        raise HTTPException(409, "id already exists")
-
     password_hashed = bcrypt.hashpw(
         user.password.encode("utf-8"),
         bcrypt.gensalt()
@@ -157,8 +141,7 @@ def edit_user(user: UserEdit, uid: str = Depends(get_current_user_id)):
 
     query = '''
     UPDATE "user".user
-    SET id = %s,
-        password = %s
+    SET password = %s
     WHERE uid = %s
     '''
 
@@ -166,7 +149,6 @@ def edit_user(user: UserEdit, uid: str = Depends(get_current_user_id)):
         con,
         query,
         (
-            user.id,
             password_hashed,
             uid,
         )

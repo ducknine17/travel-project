@@ -31,5 +31,4 @@ class EmailRequest(BaseModel):
     id: str
 
 class UserEdit(BaseModel):
-    id: str
     password: str
