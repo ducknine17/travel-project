@@ -8,7 +8,7 @@ function PostDetailPage() {
 
   const [post, setPost] = useState(null);
 
-  const loginUser = localStorage.getItem("userId");
+  const loginUser = localStorage.getItem("username");
 
   const navigate = useNavigate();
 
