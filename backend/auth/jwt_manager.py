@@ -28,6 +28,10 @@ def _jwt_expire_minutes() -> int:
     return int(os.environ.get("JWT_EXPIRE_MINUTES", "60"))
 
 
+def _password_change_expire_minutes() -> int:
+    return int(os.environ.get("PASSWORD_CHANGE_TOKEN_EXPIRE_MINUTES", "10"))
+
+
 def _base64url_encode(data: bytes) -> str:
     return base64.urlsafe_b64encode(data).rstrip(b"=").decode("utf-8")
 
@@ -41,9 +45,28 @@ def create_access_token(uid: str) -> str:
     now = datetime.datetime.now(datetime.timezone.utc)
     payload = {
         "sub": uid,
+        "type": "access",
         "iat": int(now.timestamp()),
         "exp": int((now + datetime.timedelta(minutes=_jwt_expire_minutes())).timestamp()),
     }
+    return _encode_token(payload)
+
+
+def create_password_change_token(uid: str, verification_id: str) -> str:
+    now = datetime.datetime.now(datetime.timezone.utc)
+    payload = {
+        "sub": uid,
+        "type": "password_change",
+        "jti": verification_id,
+        "iat": int(now.timestamp()),
+        "exp": int(
+            (now + datetime.timedelta(minutes=_password_change_expire_minutes())).timestamp()
+        ),
+    }
+    return _encode_token(payload)
+
+
+def _encode_token(payload: dict) -> str:
     header = {
         "alg": JWT_ALGORITHM,
         "typ": "JWT",
@@ -57,7 +80,7 @@ def create_access_token(uid: str) -> str:
     return f"{encoded_header}.{encoded_payload}.{_base64url_encode(signature)}"
 
 
-def verify_access_token(token: str) -> dict:
+def _verify_token(token: str) -> dict:
     try:
         encoded_header, encoded_payload, encoded_signature = token.split(".")
         signing_input = f"{encoded_header}.{encoded_payload}".encode("utf-8")
@@ -80,6 +103,27 @@ def verify_access_token(token: str) -> dict:
         return payload
     except Exception:
         raise HTTPException(status_code=401, detail="invalid token")
+
+
+def verify_access_token(token: str) -> dict:
+    payload = _verify_token(token)
+    # type이 없던 기존 로그인 토큰은 만료 시점까지 호환한다.
+    if payload.get("type") not in (None, "access"):
+        raise HTTPException(status_code=401, detail="invalid token")
+    return payload
+
+
+def verify_password_change_token(token: str, uid: str) -> str:
+    payload = _verify_token(token)
+    verification_id = payload.get("jti")
+    if (
+        payload.get("type") != "password_change"
+        or payload.get("sub") != uid
+        or not isinstance(verification_id, str)
+        or not verification_id.startswith("password-change-")
+    ):
+        raise HTTPException(status_code=403, detail="email verification failed")
+    return verification_id
 
 
 def get_current_user_id(

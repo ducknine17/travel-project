@@ -6,7 +6,11 @@ from util.maker import convertDict
 from util.body import *
 from auth.checker import *
 from auth.email_manager import *
-from auth.jwt_manager import create_access_token, get_current_user_id
+from auth.jwt_manager import (
+    create_access_token,
+    get_current_user_id,
+    verify_password_change_token,
+)
 import hashlib
 import bcrypt
 import time
@@ -33,7 +37,7 @@ def test():
     raise HTTPException(404, "Hi")
 
 @app.get("/load-post")
-def load_post(_uid: str = Depends(get_current_user_id)):
+def load_post():
     con = db.connect()
     result = db.executeQuery(con, "SELECT * FROM post.post")
     res = []
@@ -130,29 +134,65 @@ def register(user: UserRegister):
 
     raise HTTPException(200)
 
-@app.put("/edit-user")
-def edit_user(user: UserEdit, uid: str = Depends(get_current_user_id)):
+@app.post("/password-change/send-email")
+def send_password_change_email(uid: str = Depends(get_current_user_id)):
     con = db.connect()
+    result = db.executeQuery(
+        con,
+        'SELECT email FROM "user".user WHERE uid = %s',
+        (uid,),
+    )
+    if not result:
+        raise HTTPException(404, "user not found")
 
+    send_password_change_link(uid, result[0][0])
+    return {
+        "message": "비밀번호 변경 인증 메일을 발송했습니다."
+    }
+
+
+@app.put("/edit-user", include_in_schema=False)
+@app.put("/password-change")
+def edit_user(user: UserEdit, uid: str = Depends(get_current_user_id)):
+    verification_id = verify_password_change_token(user.verification_token, uid)
+    con = db.connect()
     password_hashed = bcrypt.hashpw(
         user.password.encode("utf-8"),
         bcrypt.gensalt()
     ).decode("utf-8")
 
-    query = '''
-    UPDATE "user".user
-    SET password = %s
-    WHERE uid = %s
-    '''
-
-    db.executeQuery(
-        con,
-        query,
-        (
-            password_hashed,
-            uid,
+    cur = con.cursor()
+    try:
+        cur.execute(
+            '''
+            SELECT id
+            FROM "user".validate
+            WHERE id = %s AND uid = %s AND is_used = false
+            FOR UPDATE
+            ''',
+            (verification_id, uid),
         )
-    )
+        if cur.fetchone() is None:
+            raise HTTPException(403, "email verification failed")
+
+        cur.execute(
+            'UPDATE "user".user SET password = %s WHERE uid = %s',
+            (password_hashed, uid),
+        )
+        if cur.rowcount != 1:
+            raise HTTPException(404, "user not found")
+
+        cur.execute(
+            'UPDATE "user".validate SET is_used = true WHERE id = %s',
+            (verification_id,),
+        )
+        con.commit()
+    except Exception:
+        con.rollback()
+        raise
+    finally:
+        cur.close()
+        con.close()
 
     return {
         "message": "success"
@@ -238,6 +278,8 @@ async def upload_image(
         "filename": saved_filename,
         "content_type": file.content_type
     }
+
+
 
 if __name__ == "__main__":
     import uvicorn

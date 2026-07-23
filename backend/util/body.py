@@ -1,4 +1,4 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 class Post(BaseModel):
     title: str
@@ -31,4 +31,5 @@ class EmailRequest(BaseModel):
     id: str
 
 class UserEdit(BaseModel):
-    password: str
+    password: str = Field(min_length=8, max_length=128)
+    verification_token: str
