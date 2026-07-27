@@ -1,17 +1,33 @@
 import { Link, useNavigate } from "react-router-dom";
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import api from "../services/api";
 
 function Header() {
   const navigate = useNavigate();
 
   const isLogin = !!localStorage.getItem("token");
-  const username = localStorage.getItem("username");
+  const [username, setUsername] = useState("");
 
   const [showMenu, setShowMenu] = useState(false);
 
+  useEffect(() => {
+    if (!isLogin) return;
+
+    const loadMe = async () => {
+      try {
+        const res = await api.get("/me");
+        console.log(res.data);
+        setUsername(res.data.username);
+      } catch (err) {
+        console.error(err);
+      }
+    };
+
+    loadMe();
+  }, [isLogin]);
+
   const logout = () => {
     localStorage.removeItem("token");
-    localStorage.removeItem("username");
 
     navigate("/");
     window.location.reload();

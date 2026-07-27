@@ -236,8 +236,17 @@ def login(user: UserLogin):
 
 @app.get("/me")
 def me(uid: str = Depends(get_current_user_id)):
+    con = db.connect()
+
+    query = 'SELECT uid, id FROM "user".user WHERE uid = %s'
+    result = db.executeQuery(con, query, (uid,))
+
+    if not result:
+        raise HTTPException(status_code=404, detail="User not found")
+
     return {
-        "uid": uid
+        "uid": result[0][0],
+        "username": result[0][1],
     }
 
 @app.get("/validate/{id}")

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import api from "../services/api";
 
@@ -7,6 +7,7 @@ function ProfileEditPage() {
 
   const [password, setPassword] = useState("");
   const [passwordCheck, setPasswordCheck] = useState("");
+  const [username, setUsername] = useState("");
   const [emailSent, setEmailSent] = useState(false);
   const verificationToken = new URLSearchParams(window.location.search).get("token");
 
@@ -19,6 +20,19 @@ function ProfileEditPage() {
       alert("인증 메일 발송에 실패했습니다.");
     }
   };
+
+  useEffect(() => {
+    const loadMe = async () => {
+      try {
+        const res = await api.get("/me");
+        setUsername(res.data.username);
+      } catch (err) {
+        console.error(err);
+      }
+    };
+
+    loadMe();
+  }, []);
 
   const saveProfile = async () => {
     if (!verificationToken) {
@@ -45,7 +59,6 @@ function ProfileEditPage() {
       alert("비밀번호가 변경되었습니다. 다시 로그인해주세요.");
 
       localStorage.removeItem("token");
-      localStorage.removeItem("userId");
       navigate("/login");
     } catch (err) {
       alert("수정에 실패했습니다.");
@@ -84,7 +97,7 @@ function ProfileEditPage() {
         <label>아이디</label>
         <input
           type="text"
-          value={localStorage.getItem("username")}
+          value={username}
           readOnly
           style={{
             width: "100%",

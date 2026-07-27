@@ -8,7 +8,20 @@ function PostDetailPage() {
 
   const [post, setPost] = useState(null);
 
-  const loginUser = localStorage.getItem("username");
+  const [loginUser, setLoginUser] = useState("");
+  useEffect(() => {
+    const loadMe = async () => {
+      try {
+        const res = await api.get("/me");
+        console.log(res.data);
+        setLoginUser(res.data.username);
+      } catch (err) {
+        console.error(err);
+      }
+    };
+
+    loadMe();
+  }, []);
 
   const navigate = useNavigate();
 
@@ -67,6 +80,18 @@ function PostDetailPage() {
     >
       <h1>{post.title}</h1>
       <h3>📍 {post.place}</h3>
+      {post.photo?.map((img, index) => (
+        <img
+          key={index}
+          src={`${api.defaults.baseURL}/image/${encodeURIComponent(img)}`}
+          alt={`사진 ${index + 1}`}
+          style={{
+            width: "100%",
+            marginBottom: "10px",
+            borderRadius: "10px",
+          }}
+        />
+      ))}
       <p>{post.content}</p>
       <hr />
       <p>작성자 : {post.author}</p>
