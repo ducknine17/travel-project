@@ -1,0 +1,106 @@
+.filter-drawer{
+
+    position:fixed;
+
+    top:0;
+
+    left:-260px;
+
+    width:260px;
+
+    height:100vh;
+
+    background:white;
+
+    transition:.35s;
+
+    box-shadow:2px 0 10px rgba(0,0,0,.15);
+
+    z-index:1000;
+
+}
+
+.filter-drawer.open{
+
+    left:0;
+
+}
+
+/* Drawer */
+
+.filter-drawer{
+    position: fixed;
+    top: 70px;
+    left: -100%;
+    width: 100%;
+    height: calc(100vh - 70px);
+    background: white;
+    transition: left .35s ease;
+    z-index: 999;
+    overflow-y: auto;
+}
+
+.filter-drawer.open{
+    left: 0;
+}
+
+.drawer-content{
+    padding: 30px;
+}
+
+.drawer-top{
+    display: flex;
+    gap: 15px;
+    margin-bottom: 30px;
+}
+
+.drawer-top button{
+    padding: 10px 18px;
+    border: none;
+    border-radius: 12px;
+    cursor: pointer;
+}
+
+.drawer-posts{
+    display: flex;
+    flex-wrap: wrap;
+    gap: 20px;
+}
+
+/* 손잡이 */
+
+.drawer-handle{
+
+    position:fixed;
+
+    top:50%;
+
+    left:0;
+
+    transform:translateY(-50%);
+
+    width:40px;
+
+    height:90px;
+
+    border:none;
+
+    border-radius:0 18px 18px 0;
+
+    background:white;
+
+    box-shadow:2px 2px 10px rgba(0,0,0,.2);
+
+    cursor:pointer;
+
+    z-index:1001;
+
+    transition:left .35s ease;
+
+}
+
+.drawer-handle.open{
+
+    left:calc(100% - 40px);
+
+}
