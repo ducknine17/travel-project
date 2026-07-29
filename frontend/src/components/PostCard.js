@@ -1,39 +1,62 @@
 import { useNavigate } from "react-router-dom";
 import "../styles/PostCard.css";
 import api from "../services/api";
+import { useState } from "react";
 
 function PostCard({ post }) {
 
     const navigate = useNavigate();
+    const [liked, setLiked] = useState(false);
+    const [favorite, setFavorite] = useState(false);
 
     const handleLike = (e) => {
+
         e.stopPropagation();
 
         const token = localStorage.getItem("token");
 
         if (!token) {
-            if (window.confirm("좋아요는 로그인 후 이용할 수 있습니다.\n로그인하시겠습니까?")) {
+
+            const ok = window.confirm(
+                "좋아요는 로그인 후 이용할 수 있습니다.\n로그인하시겠습니까?"
+            );
+
+            if (ok) {
                 navigate("/login");
             }
+
             return;
         }
 
-        // TODO : 좋아요 API
+        setLiked(!liked);
+
     };
 
     const handleFavorite = (e) => {
+
         e.stopPropagation();
 
         const token = localStorage.getItem("token");
 
         if (!token) {
-            if (window.confirm("즐겨찾기는 로그인 후 이용할 수 있습니다.\n로그인하시겠습니까?")) {
+
+            const ok = window.confirm(
+                "즐겨찾기는 로그인 후 이용할 수 있습니다.\n로그인하시겠습니까?"
+            );
+
+            if (ok) {
                 navigate("/login");
             }
+
             return;
         }
 
-        // TODO : 즐겨찾기 API
+        setFavorite(!favorite);
+
+        if (!liked) {
+            setLiked(true);
+        }
+
     };
 
     return (
@@ -58,14 +81,14 @@ function PostCard({ post }) {
                         className="icon-button"
                         onClick={handleLike}
                     >
-                        🤍
+                        {liked ? "❤️" : "🤍"}
                     </button>
 
                     <button
                         className="icon-button"
                         onClick={handleFavorite}
                     >
-                        ⭐
+                        {favorite ? "⭐" : "☆"}
                     </button>
 
                 </div>
