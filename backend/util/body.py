@@ -33,3 +33,21 @@ class EmailRequest(BaseModel):
 class UserEdit(BaseModel):
     password: str = Field(min_length=8, max_length=128)
     verification_token: str
+
+
+class PlaceSummary(BaseModel):
+    id: str
+    name: str
+    lat: float
+    lng: float
+    address: str
+    type: str
+    tags: list[str]
+
+
+class PlaceFilterResponse(BaseModel):
+    items: list[PlaceSummary]
+    total: int
+    page: int
+    page_size: int
+    filters: list[str]

@@ -1,5 +1,5 @@
 import datetime
-from fastapi import Depends, FastAPI, HTTPException, UploadFile, File
+from fastapi import Depends, FastAPI, HTTPException, UploadFile, File, Query
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from util.maker import convertDict
@@ -15,6 +15,11 @@ import hashlib
 import bcrypt
 import time
 import shutil
+from place_filter import (
+    ACCESSIBILITY_FILTER_GROUPS,
+    AccessibilityFilter,
+    search_places,
+)
 
 dotenv.load_dotenv("../.env")
 
@@ -35,6 +40,27 @@ app.add_middleware(
 @app.get('/')
 def test():
     raise HTTPException(404, "Hi")
+
+
+@app.get("/places/filters")
+def get_place_filters():
+    """Return filter keys and Korean labels used by the client."""
+    return {"groups": ACCESSIBILITY_FILTER_GROUPS}
+
+
+@app.get("/places", response_model=PlaceFilterResponse)
+def get_places(
+    filters: list[AccessibilityFilter] = Query(default=[]),
+    page: int = Query(default=1, ge=1),
+    page_size: int = Query(default=20, ge=1, le=100),
+):
+    """
+    Filter tourist places by accessibility facilities.
+
+    Repeat the filters query parameter to select multiple facilities. A place
+    must contain every selected facility (AND semantics).
+    """
+    return search_places(filters, page, page_size)
 
 @app.get("/load-post")
 def load_post():
