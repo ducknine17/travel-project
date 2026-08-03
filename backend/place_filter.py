@@ -105,7 +105,7 @@ def search_places(filters, page, page_size):
     params = []
 
     if selected:
-        where_sql = "WHERE COALESCE(tag, ARRAY[]::text[]) @> %s::text[]"
+        where_sql = "WHERE COALESCE(tag, ARRAY[]::varchar[]) @> %s::varchar[]"
         params.append(selected)
 
     connection = db.connect()

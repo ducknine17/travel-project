@@ -73,7 +73,10 @@ class SearchPlacesTest(unittest.TestCase):
             cursor.executions[1][1],
             (["parking", "wheelchair"], 10, 10),
         )
-        self.assertIn("tag, ARRAY[]::text[]) @> %s::text[]", cursor.executions[0][0])
+        self.assertIn(
+            "tag, ARRAY[]::varchar[]) @> %s::varchar[]",
+            cursor.executions[0][0],
+        )
         self.assertTrue(cursor.closed)
         self.assertTrue(connection.closed)
 
