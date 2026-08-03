@@ -31,7 +31,7 @@ for place in place_list:
     res = db.executeQuery(con, query, (id,))
     if res == []:
         tags = []
-        tags_raw = requests.get(f"http://apis.data.go.kr/B551011/KorWithService2/detailWithTour2?serviceKey={os.environ.get('OPENAPI_KEY')}&MobileOS=IOS&MobileApp=bef&_type=json&contentId={id}").json()["response"]["body"]["items"]
+        tags_raw = requests.get(f"https://apis.data.go.kr/B551011/KorWithService2/detailWithTour2?serviceKey={os.environ.get('OPENAPI_KEY')}&MobileOS=IOS&MobileApp=bef&_type=json&contentId={id}").json()["response"]["body"]["items"]
         if tags_raw == '':
             continue
         tags_raw = tags_raw["item"][0]

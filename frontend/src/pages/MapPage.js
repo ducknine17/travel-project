@@ -52,7 +52,7 @@ function MapPage() {
         </div>
       ))}
 
-      <KakaoMap />
+      <KakaoMap places={places} />
 
       <div style={{ marginTop: "20px" }}>
         {places.map((place) => (
