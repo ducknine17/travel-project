@@ -138,6 +138,108 @@ def delete_post(post: PostDelete, uid: str = Depends(get_current_user_id)):
 
     raise HTTPException(200)
 
+
+def update_post_like(post_id: str, uid: str, liked: bool):
+    con = db.connect()
+    cur = con.cursor()
+
+    try:
+        cur.execute(
+            'SELECT liked_post FROM "user".user WHERE uid = %s FOR UPDATE',
+            (uid,),
+        )
+        user = cur.fetchone()
+        if user is None:
+            raise HTTPException(401, "user not found")
+
+        cur.execute(
+            "SELECT likes FROM post.post WHERE id = %s FOR UPDATE",
+            (post_id,),
+        )
+        post = cur.fetchone()
+        if post is None:
+            raise HTTPException(404, "post not found")
+
+        liked_posts = user[0] or []
+        likes = post[0] or 0
+
+        if liked and post_id not in liked_posts:
+            liked_posts.append(post_id)
+            likes += 1
+        elif not liked and post_id in liked_posts:
+            liked_posts.remove(post_id)
+            likes = max(0, likes - 1)
+        else:
+            return {"post_id": post_id, "liked": liked, "likes": likes}
+
+        cur.execute(
+            'UPDATE "user".user SET liked_post = %s WHERE uid = %s',
+            (liked_posts, uid),
+        )
+        cur.execute(
+            "UPDATE post.post SET likes = %s WHERE id = %s",
+            (likes, post_id),
+        )
+        con.commit()
+
+        return {"post_id": post_id, "liked": liked, "likes": likes}
+    except Exception:
+        con.rollback()
+        raise
+    finally:
+        cur.close()
+        con.close()
+
+
+@app.post("/posts/{post_id}/like")
+def like_post(post_id: str, uid: str = Depends(get_current_user_id)):
+    return update_post_like(post_id, uid, True)
+
+
+@app.delete("/posts/{post_id}/like")
+def unlike_post(post_id: str, uid: str = Depends(get_current_user_id)):
+    return update_post_like(post_id, uid, False)
+
+
+@app.get("/liked-posts")
+def get_liked_posts(uid: str = Depends(get_current_user_id)):
+    con = db.connect()
+    cur = con.cursor()
+
+    try:
+        cur.execute(
+            'SELECT liked_post FROM "user".user WHERE uid = %s',
+            (uid,),
+        )
+        user = cur.fetchone()
+        if user is None:
+            raise HTTPException(401, "user not found")
+
+        liked_posts = user[0] or []
+        if not liked_posts:
+            return []
+
+        cur.execute(
+            """
+            SELECT id, title, author, written_date, content, photo,
+                   views, likes, place, tag
+            FROM post.post
+            WHERE id = ANY(%s::varchar[])
+            ORDER BY array_position(%s::varchar[], id) DESC
+            """,
+            (liked_posts, liked_posts),
+        )
+        return convertDict(
+            cur.fetchall(),
+            [
+                "id", "title", "author", "written_date", "content",
+                "photo", "views", "likes", "place", "tag",
+            ],
+        )
+    finally:
+        cur.close()
+        con.close()
+
 @app.get("/check-id/{id}")
 def check_id(id: str):
     exists = registerChecker(id)

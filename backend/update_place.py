@@ -46,6 +46,7 @@ for place in place_list:
             db.executeQuery(con, query, params)
             print(f"{name} : {tags}")
     else:
+        print(f"{name}: Exists")
         continue
         query = "UPDATE place.place SET name = %s, lat = %s, lng = %s, tag = %s, address = %s, type = %s"
         params = (name, lat, lng, tags, address, _type)
