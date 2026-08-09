@@ -1,15 +1,18 @@
 import { useNavigate } from "react-router-dom";
 import "../styles/PostCard.css";
 import api from "../services/api";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
-function PostCard({ post }) {
+function PostCard({ post, liked: initialLiked = false }) {
 
     const navigate = useNavigate();
-    const [liked, setLiked] = useState(false);
-    const [favorite, setFavorite] = useState(false);
+    const [liked, setLiked] = useState(initialLiked);
 
-    const handleLike = (e) => {
+    useEffect(() => {
+        setLiked(initialLiked);
+    }, [initialLiked]);
+
+    const handleLike = async (e) => {
 
         e.stopPropagation();
 
@@ -28,49 +31,44 @@ function PostCard({ post }) {
             return;
         }
 
-        setLiked(!liked);
+        try {
 
-    };
+            if (!liked) {
 
-    const handleFavorite = (e) => {
+                await api.post("/posts/" + post.id + "/like");
 
-        e.stopPropagation();
+                setLiked(true);
 
-        const token = localStorage.getItem("token");
+            } else {
 
-        if (!token) {
+                await api.delete("/posts/" + post.id + "/like");
 
-            const ok = window.confirm(
-                "즐겨찾기는 로그인 후 이용할 수 있습니다.\n로그인하시겠습니까?"
-            );
-
-            if (ok) {
-                navigate("/login");
+                setLiked(false);
             }
 
-            return;
+        } catch (error) {
+
+            console.error("좋아요 처리 실패:", error);
+            alert("좋아요 처리 중 오류가 발생했습니다.");
+
         }
-
-        setFavorite(!favorite);
-
-        if (!liked) {
-            setLiked(true);
-        }
-
     };
 
     return (
-
         <div
             className="post-card"
-            onClick={() => navigate(`/post/${post.id}`)}
+            onClick={() => navigate("/post/" + post.id)}
         >
 
             <div className="post-image">
 
                 {post.photo && post.photo.length > 0 && (
                     <img
-                        src={`${api.defaults.baseURL}/image/${encodeURIComponent(post.photo[0])}`}
+                        src={
+                            api.defaults.baseURL +
+                            "/image/" +
+                            encodeURIComponent(post.photo[0])
+                        }
                         alt="대표사진"
                     />
                 )}
@@ -82,13 +80,6 @@ function PostCard({ post }) {
                         onClick={handleLike}
                     >
                         {liked ? "❤️" : "🤍"}
-                    </button>
-
-                    <button
-                        className="icon-button"
-                        onClick={handleFavorite}
-                    >
-                        {favorite ? "⭐" : "☆"}
                     </button>
 
                 </div>
@@ -104,9 +95,7 @@ function PostCard({ post }) {
             </div>
 
         </div>
-
     );
-
 }
 
 export default PostCard;

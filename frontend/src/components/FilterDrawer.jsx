@@ -9,7 +9,6 @@ function FilterDrawer({ open, onToggle, children }) {
                         <button>태그</button>
                         <button>위치</button>
                         <button>별점</button>
-                        <button>즐겨찾기</button>
                     </div>
 
                     <div className="drawer-posts">

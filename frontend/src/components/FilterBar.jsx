@@ -8,10 +8,6 @@ function FilterBar({ likedMode = false }) {
 
             <button>별점</button>
 
-            {likedMode && (
-                <button>즐겨찾기</button>
-            )}
-
         </div>
     );
 }
