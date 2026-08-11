@@ -1,4 +1,6 @@
 import datetime
+import os
+import requests
 from fastapi import Depends, FastAPI, HTTPException, UploadFile, File, Query
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
@@ -36,6 +38,58 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
+@app.get("/bus-location")
+def get_bus_location(
+    city_code: str,
+    route_id: str
+):
+    url = "http://apis.data.go.kr/1613000/BusLcInfoInqireService/getRouteAcctoBusLcList"
+
+    params = {
+        "serviceKey": os.environ.get("TAGO_API_KEY"),
+        "pageNo": 1,
+        "numOfRows": 100,
+        "_type": "json",
+        "cityCode": city_code,
+        "routeId": route_id,
+    }
+
+    try:
+        response = requests.get(url, params=params, timeout=5)
+        response.raise_for_status()
+
+        data = response.json()
+
+        body = data.get("response", {}).get("body", {})
+        items = body.get("items", {}).get("item", [])
+
+        if isinstance(items, dict):
+            items = [items]
+
+        buses = []
+
+        for bus in items:
+            buses.append({
+                "routeName": bus.get("routenm"),
+                "latitude": bus.get("gpslati"),
+                "longitude": bus.get("gpslong"),
+                "nodeOrder": bus.get("nodeord"),
+                "nodeName": bus.get("nodenm"),
+                "nodeId": bus.get("nodeid"),
+                "routeType": bus.get("routetp"),
+                "vehicleNumber": bus.get("vehicleno"),
+            })
+
+        return buses
+
+    except requests.RequestException as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"버스 API 요청 실패: {str(e)}"
+        )
+
 
 @app.get('/')
 def test():

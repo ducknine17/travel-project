@@ -1,6 +1,6 @@
 import { useEffect } from "react";
 
-function KakaoMap({ places = [] }) {
+function KakaoMap({ places = [], buses = [] }) {
   useEffect(() => {
     window.kakao.maps.load(() => {
       const container = document.getElementById("map");
