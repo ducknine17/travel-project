@@ -6,6 +6,7 @@ function MapPage() {
   const [filterGroups, setFilterGroups] = useState([]);
   const [selectedFilters, setSelectedFilters] = useState([]);
   const [places, setPlaces] = useState([]);
+  const [stations, setStations] = useState([]);
 
   useEffect(() => {
     api.get("/places/filters")
@@ -23,6 +24,24 @@ function MapPage() {
       })
       .catch((error) => console.log(error));
   }, [selectedFilters]);
+
+  useEffect(() => {
+    api.get("/bus-stations", {
+      params: {
+        latitude: 37.6317,
+        longitude: 127.0775,
+      },
+    })
+      .then((response) => {
+        console.log("🚌 버스 정류장 API 결과:", response.data);
+        console.log("🚌 정류장 개수:", response.data?.length);
+
+        setStations(response.data || []);
+      })
+      .catch((error) => {
+        console.log("버스 정류장 불러오기 실패:", error);
+      });
+  }, []);
 
   const toggleFilter = (filterKey) => {
     setSelectedFilters((current) =>
@@ -52,7 +71,7 @@ function MapPage() {
         </div>
       ))}
 
-      <KakaoMap places={places} />
+      <KakaoMap places={places} stations={stations} />
 
       <div style={{ marginTop: "20px" }}>
         {places.map((place) => (
