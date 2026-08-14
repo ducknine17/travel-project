@@ -48,7 +48,7 @@ def get_bus_location(
     url = "http://apis.data.go.kr/1613000/BusLcInfoInqireService/getRouteAcctoBusLcList"
 
     params = {
-        "serviceKey": os.environ.get("TAGO_API_KEY"),
+        "serviceKey": os.environ.get("OPENAPI_KEY"),
         "pageNo": 1,
         "numOfRows": 100,
         "_type": "json",
@@ -88,6 +88,59 @@ def get_bus_location(
         raise HTTPException(
             status_code=500,
             detail=f"버스 API 요청 실패: {str(e)}"
+        )
+
+
+@app.get("/bus-stations")
+def get_bus_stations(
+    latitude: float,
+    longitude: float
+):
+    url = "http://apis.data.go.kr/1613000/BusSttnInfoInqireService/getCrdntPrxmtSttnList"
+
+    params = {
+        "serviceKey": os.environ.get("OPENAPI_KEY"),
+        "pageNo": 1,
+        "numOfRows": 100,
+        "_type": "json",
+        "gpsLati": latitude,
+        "gpsLong": longitude,
+    }
+
+    try:
+        response = requests.get(
+            url,
+            params=params,
+            timeout=5
+        )
+
+        response.raise_for_status()
+
+        data = response.json()
+
+        body = data.get("response", {}).get("body", {})
+        items = body.get("items", {}).get("item", [])
+
+        if isinstance(items, dict):
+            items = [items]
+
+        stations = []
+
+        for station in items:
+            stations.append({
+                "id": station.get("nodeid"),
+                "name": station.get("nodenm"),
+                "latitude": station.get("gpslati"),
+                "longitude": station.get("gpslong"),
+                "cityCode": station.get("citycode"),
+            })
+
+        return stations
+
+    except requests.RequestException as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"버스 정류장 API 요청 실패: {str(e)}"
         )
 
 
