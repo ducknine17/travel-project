@@ -64,7 +64,12 @@ def get_bus_location(
         data = response.json()
 
         body = data.get("response", {}).get("body", {})
-        items = body.get("items", {}).get("item", [])
+        items_container = body.get("items") if isinstance(body, dict) else None
+        items = (
+            items_container.get("item", [])
+            if isinstance(items_container, dict)
+            else []
+        )
 
         if isinstance(items, dict):
             items = [items]
@@ -120,7 +125,12 @@ def get_bus_stations(
         data = response.json()
 
         body = data.get("response", {}).get("body", {})
-        items = body.get("items", {}).get("item", [])
+        items_container = body.get("items") if isinstance(body, dict) else None
+        items = (
+            items_container.get("item", [])
+            if isinstance(items_container, dict)
+            else []
+        )
 
         if isinstance(items, dict):
             items = [items]
