@@ -119,6 +119,9 @@ def get_bus_stations(
             params=params,
             timeout=5
         )
+        print("TAGO STATUS:", response.status_code)
+        print("TAGO URL:", response.url)
+        print("TAGO RESPONSE:", response.text[:2000])
 
         response.raise_for_status()
 
