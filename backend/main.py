@@ -17,6 +17,7 @@ import hashlib
 import bcrypt
 import time
 import shutil
+from urllib.parse import unquote
 from place_filter import (
     ACCESSIBILITY_FILTER_GROUPS,
     AccessibilityFilter,
@@ -48,7 +49,7 @@ def get_bus_location(
     url = "http://apis.data.go.kr/1613000/BusLcInfoInqireService/getRouteAcctoBusLcList"
 
     params = {
-        "serviceKey": os.environ.get("OPENAPI_KEY"),
+        "serviceKey": unquote(os.environ["OPENAPI_KEY"]),
         "pageNo": 1,
         "numOfRows": 100,
         "_type": "json",
@@ -99,7 +100,7 @@ def get_bus_stations(
     url = "http://apis.data.go.kr/1613000/BusSttnInfoInqireService/getCrdntPrxmtSttnList"
 
     params = {
-        "serviceKey": os.environ.get("OPENAPI_KEY"),
+        "serviceKey": unquote(os.environ["OPENAPI_KEY"]),
         "pageNo": 1,
         "numOfRows": 100,
         "_type": "json",
