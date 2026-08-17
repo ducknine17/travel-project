@@ -28,8 +28,8 @@ function MapPage() {
   useEffect(() => {
     api.get("/bus-stations", {
       params: {
-        latitude: 37.6317,
-        longitude: 127.0775,
+        latitude: 36.3,
+        longitude: 127.3,
       },
     })
       .then((response) => {

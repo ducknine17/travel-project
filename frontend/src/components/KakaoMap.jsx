@@ -12,7 +12,7 @@ function KakaoMap({ places = [], buses = [], stations = [] }) {
         const container = document.getElementById("map");
 
         const options = {
-          center: new window.kakao.maps.LatLng(37.6317, 127.0775),
+          center: new window.kakao.maps.LatLng(36.3, 127.3),
           level: 3,
         };
 
