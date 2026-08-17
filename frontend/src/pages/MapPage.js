@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import KakaoMap from "../components/KakaoMap";
 import api from "../services/api";
 
@@ -25,15 +25,18 @@ function MapPage() {
       .catch((error) => console.log(error));
   }, [selectedFilters]);
 
-  useEffect(() => {
+  // 지도 이동이 끝났을 때 호출
+  const handleMapMove = useCallback((latitude, longitude) => {
+    console.log("🗺️ 지도 이동:", latitude, longitude);
+
     api.get("/bus-stations", {
       params: {
-        latitude: 36.3,
-        longitude: 127.3,
+        latitude,
+        longitude,
       },
     })
       .then((response) => {
-        console.log("🚌 버스 정류장 API 결과:", response.data);
+        console.log("🚌 정류장 갱신:", response.data);
         console.log("🚌 정류장 개수:", response.data?.length);
 
         setStations(response.data || []);
@@ -58,8 +61,12 @@ function MapPage() {
       {filterGroups.map((group) => (
         <div key={group.key} style={{ marginBottom: "10px" }}>
           <strong>{group.label}: </strong>
+
           {group.filters.map((filter) => (
-            <label key={filter.key} style={{ marginRight: "10px" }}>
+            <label
+              key={filter.key}
+              style={{ marginRight: "10px" }}
+            >
               <input
                 type="checkbox"
                 checked={selectedFilters.includes(filter.key)}
@@ -71,7 +78,11 @@ function MapPage() {
         </div>
       ))}
 
-      <KakaoMap places={places} stations={stations} />
+      <KakaoMap
+        places={places}
+        stations={stations}
+        onMapMove={handleMapMove}
+      />
 
       <div style={{ marginTop: "20px" }}>
         {places.map((place) => (

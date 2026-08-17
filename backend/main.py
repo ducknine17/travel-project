@@ -158,6 +158,70 @@ def get_bus_stations(
         )
 
 
+@app.get("/bus-arrivals")
+def get_bus_arrivals(
+    city_code: str,
+    node_id: str
+):
+    url = "https://apis.data.go.kr/1613000/ArvlInfoInqireService/getSttnAcctoArvlPrearngeInfoList"
+
+    api_key = os.environ.get("OPENAPI_KEY")
+
+    if not api_key:
+        raise HTTPException(
+            status_code=500,
+            detail="OPENAPI_KEY가 설정되지 않았습니다."
+        )
+
+    params = {
+        "serviceKey": api_key,
+        "pageNo": 1,
+        "numOfRows": 20,
+        "_type": "json",
+        "cityCode": city_code,
+        "nodeId": node_id,
+    }
+
+    try:
+        response = requests.get(
+            url,
+            params=params,
+            timeout=5
+        )
+
+        response.raise_for_status()
+
+        data = response.json()
+
+        body = data.get("response", {}).get("body", {})
+        items = body.get("items", {}).get("item", [])
+
+        if isinstance(items, dict):
+            items = [items]
+
+        buses = []
+
+        for bus in items:
+            buses.append({
+                "stationId": bus.get("nodeid"),
+                "stationName": bus.get("nodenm"),
+                "routeId": bus.get("routeid"),
+                "routeName": bus.get("routeno"),
+                "routeType": bus.get("routetp"),
+                "vehicleType": bus.get("vehicletp"),
+                "remainingStops": bus.get("arrprevstationcnt"),
+                "arrivalTime": bus.get("arrtime"),
+            })
+
+        return buses
+
+    except requests.RequestException as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"버스 도착정보 API 요청 실패: {str(e)}"
+        )
+
+
 @app.get('/')
 def test():
     raise HTTPException(404, "Hi")
