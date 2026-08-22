@@ -60,7 +60,7 @@ function MapPage() {
     setSelectedStation(station);
     setBusArrivals([]);
 
-    api.get("/bus-arrivals", {
+    api.get("/bus-arrival", {
       params: {
         city_code: station.cityCode,
         node_id: station.id,

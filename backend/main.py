@@ -165,7 +165,7 @@ def get_bus_arrival(
                 "stationId": item.get("nodeid"),
                 "stationName": item.get("nodenm"),
                 "routeId": item.get("routeid"),
-                "routeNumber": item.get("routeno"),
+                "routeName": item.get("routeno"),
                 "routeType": item.get("routetp"),
                 "remainingStops": item.get("arrprevstationcnt"),
                 "vehicleType": item.get("vehicletp"),
