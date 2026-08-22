@@ -4,13 +4,14 @@ function KakaoMap({
   places = [],
   stations = [],
   onMapMove,
+  onStationClick,
 }) {
   const mapRef = useRef(null);
   const placeMarkersRef = useRef([]);
   const stationMarkersRef = useRef([]);
   const infoWindowRef = useRef(null);
 
-  // 지도 생성
+  // 지도는 처음 한 번만 생성
   useEffect(() => {
     if (!window.kakao || !window.kakao.maps) {
       console.error("카카오 지도가 아직 로드되지 않았습니다.");
@@ -31,7 +32,7 @@ function KakaoMap({
 
       mapRef.current = map;
 
-      // 지도 빈 곳을 클릭하면 정보창 닫기
+      // 지도 빈 곳 클릭 → 정보창 닫기
       window.kakao.maps.event.addListener(map, "click", () => {
         if (infoWindowRef.current) {
           infoWindowRef.current.close();
@@ -39,7 +40,7 @@ function KakaoMap({
         }
       });
 
-      // 지도를 움직이기 시작하면 정보창 닫기
+      // 지도 드래그 시작 → 정보창 닫기
       window.kakao.maps.event.addListener(map, "dragstart", () => {
         if (infoWindowRef.current) {
           infoWindowRef.current.close();
@@ -47,7 +48,7 @@ function KakaoMap({
         }
       });
 
-      // 지도 이동이 끝났을 때
+      // 지도 이동/확대축소가 끝났을 때
       window.kakao.maps.event.addListener(map, "idle", () => {
         const center = map.getCenter();
 
@@ -65,7 +66,7 @@ function KakaoMap({
         }
       });
 
-      // 처음 지도 위치의 정류장도 불러오기
+      // 최초 위치에서도 정류장 요청
       const center = map.getCenter();
 
       if (onMapMove) {
@@ -77,13 +78,13 @@ function KakaoMap({
     });
   }, [onMapMove]);
 
-  // 여행지 마커 업데이트
+  // 여행지 마커
   useEffect(() => {
     const map = mapRef.current;
 
     if (!map || !window.kakao?.maps) return;
 
-    // 기존 여행지 마커 제거
+    // 기존 마커 제거
     placeMarkersRef.current.forEach((marker) => {
       marker.setMap(null);
     });
@@ -91,6 +92,7 @@ function KakaoMap({
     placeMarkersRef.current = [];
 
     places.forEach((place) => {
+      // 기존 데이터 구조 유지
       const latitude = Number(place.lng);
       const longitude = Number(place.lat);
 
@@ -118,7 +120,7 @@ function KakaoMap({
     });
   }, [places]);
 
-  // 버스 정류장 마커 업데이트
+  // 버스 정류장 마커
   useEffect(() => {
     const map = mapRef.current;
 
@@ -131,13 +133,13 @@ function KakaoMap({
 
     stationMarkersRef.current = [];
 
-    // 기존 정보창 닫기
+    // 정류장 목록이 바뀌면 기존 정보창도 닫기
     if (infoWindowRef.current) {
       infoWindowRef.current.close();
       infoWindowRef.current = null;
     }
 
-    // 버스 아이콘
+    // 버스 정류장 전용 아이콘
     const busIconSvg = `
       <svg
         width="36"
@@ -208,6 +210,7 @@ function KakaoMap({
             infoWindowRef.current.close();
           }
 
+          // 정류장 이름 표시
           const infowindow =
             new window.kakao.maps.InfoWindow({
               content: `
@@ -227,12 +230,17 @@ function KakaoMap({
           infowindow.open(map, marker);
 
           infoWindowRef.current = infowindow;
+
+          // ⭐ MapPage에 선택한 정류장 전달
+          if (onStationClick) {
+            onStationClick(station);
+          }
         }
       );
 
       stationMarkersRef.current.push(marker);
     });
-  }, [stations]);
+  }, [stations, onStationClick]);
 
   return (
     <div
