@@ -17,7 +17,7 @@ import hashlib
 import bcrypt
 import time
 import shutil
-from urllib.parse import unquote
+from bus_api import get_response_items, get_service_key
 from place_filter import (
     ACCESSIBILITY_FILTER_GROUPS,
     AccessibilityFilter,
@@ -49,7 +49,7 @@ def get_bus_location(
     url = "http://apis.data.go.kr/1613000/BusLcInfoInqireService/getRouteAcctoBusLcList"
 
     params = {
-        "serviceKey": unquote(os.environ["OPENAPI_KEY"]),
+        "serviceKey": get_service_key(),
         "pageNo": 1,
         "numOfRows": 100,
         "_type": "json",
@@ -63,16 +63,7 @@ def get_bus_location(
 
         data = response.json()
 
-        body = data.get("response", {}).get("body", {})
-        items_container = body.get("items") if isinstance(body, dict) else None
-        items = (
-            items_container.get("item", [])
-            if isinstance(items_container, dict)
-            else []
-        )
-
-        if isinstance(items, dict):
-            items = [items]
+        items = get_response_items(data)
 
         buses = []
 
@@ -105,7 +96,7 @@ def get_bus_stations(
     url = "http://apis.data.go.kr/1613000/BusSttnInfoInqireService/getCrdntPrxmtSttnList"
 
     params = {
-        "serviceKey": unquote(os.environ["OPENAPI_KEY"]),
+        "serviceKey": get_service_key(),
         "pageNo": 1,
         "numOfRows": 100,
         "_type": "json",
@@ -119,24 +110,12 @@ def get_bus_stations(
             params=params,
             timeout=5
         )
-        print("TAGO STATUS:", response.status_code)
-        print("TAGO URL:", response.url)
-        print("TAGO RESPONSE:", response.text[:2000])
 
         response.raise_for_status()
 
         data = response.json()
 
-        body = data.get("response", {}).get("body", {})
-        items_container = body.get("items") if isinstance(body, dict) else None
-        items = (
-            items_container.get("item", [])
-            if isinstance(items_container, dict)
-            else []
-        )
-
-        if isinstance(items, dict):
-            items = [items]
+        items = get_response_items(data)
 
         stations = []
 
@@ -158,67 +137,46 @@ def get_bus_stations(
         )
 
 
-@app.get("/bus-arrivals")
-def get_bus_arrivals(
+@app.get("/bus-arrival")
+def get_bus_arrival(
     city_code: str,
-    node_id: str
+    node_id: str,
 ):
     url = "https://apis.data.go.kr/1613000/ArvlInfoInqireService/getSttnAcctoArvlPrearngeInfoList"
 
-    api_key = os.environ.get("OPENAPI_KEY")
-
-    if not api_key:
-        raise HTTPException(
-            status_code=500,
-            detail="OPENAPI_KEY가 설정되지 않았습니다."
-        )
-
     params = {
-        "serviceKey": api_key,
+        # OPENAPI_KEY is stored in its encoded form. Decode it here because
+        # requests encodes params; otherwise '%' becomes '%25'.
+        "serviceKey": get_service_key(),
         "pageNo": 1,
-        "numOfRows": 20,
+        "numOfRows": 100,
         "_type": "json",
         "cityCode": city_code,
         "nodeId": node_id,
     }
 
     try:
-        response = requests.get(
-            url,
-            params=params,
-            timeout=5
-        )
-
+        response = requests.get(url, params=params, timeout=5)
         response.raise_for_status()
+        items = get_response_items(response.json())
 
-        data = response.json()
-
-        body = data.get("response", {}).get("body", {})
-        items = body.get("items", {}).get("item", [])
-
-        if isinstance(items, dict):
-            items = [items]
-
-        buses = []
-
-        for bus in items:
-            buses.append({
-                "stationId": bus.get("nodeid"),
-                "stationName": bus.get("nodenm"),
-                "routeId": bus.get("routeid"),
-                "routeName": bus.get("routeno"),
-                "routeType": bus.get("routetp"),
-                "vehicleType": bus.get("vehicletp"),
-                "remainingStops": bus.get("arrprevstationcnt"),
-                "arrivalTime": bus.get("arrtime"),
-            })
-
-        return buses
-
-    except requests.RequestException as e:
+        return [
+            {
+                "stationId": item.get("nodeid"),
+                "stationName": item.get("nodenm"),
+                "routeId": item.get("routeid"),
+                "routeNumber": item.get("routeno"),
+                "routeType": item.get("routetp"),
+                "remainingStops": item.get("arrprevstationcnt"),
+                "vehicleType": item.get("vehicletp"),
+                "arrivalTime": item.get("arrtime"),
+            }
+            for item in items
+        ]
+    except (requests.RequestException, ValueError) as e:
         raise HTTPException(
             status_code=500,
-            detail=f"버스 도착정보 API 요청 실패: {str(e)}"
+            detail=f"버스 도착정보 API 요청 실패: {str(e)}",
         )
 
 
