@@ -1,7 +1,7 @@
 import unittest
 from unittest.mock import patch
 
-from place_filter import AccessibilityFilter, search_places
+from place_filter import AccessibilityFilter, search_place_options, search_places
 
 
 class FakeCursor:
@@ -91,6 +91,46 @@ class SearchPlacesTest(unittest.TestCase):
         self.assertEqual(cursor.executions[0][1], ())
         self.assertNotIn("WHERE", cursor.executions[0][0])
         self.assertEqual(cursor.executions[1][1], (20, 0))
+
+    def test_searches_place_name_and_address(self):
+        cursor = FakeCursor(total=0)
+        connection = FakeConnection(cursor)
+
+        with patch("place_filter.db.connect", return_value=connection):
+            search_places([], page=1, page_size=50, query=" 서울 ")
+
+        self.assertIn(
+            "WHERE (name ILIKE %s OR address ILIKE %s)",
+            cursor.executions[0][0],
+        )
+        self.assertEqual(cursor.executions[0][1], ("%서울%", "%서울%"))
+        self.assertEqual(
+            cursor.executions[1][1],
+            ("%서울%", "%서울%", 50, 0),
+        )
+
+    def test_returns_all_lightweight_place_options(self):
+        cursor = FakeCursor(
+            rows=[
+                (
+                    "1",
+                    "서울숲",
+                    "서울특별시 성동구 뚝섬로 273",
+                    "tour",
+                    "서울특별시",
+                    "성동구",
+                )
+            ],
+        )
+        connection = FakeConnection(cursor)
+
+        with patch("place_filter.db.connect", return_value=connection):
+            result = search_place_options()
+
+        self.assertEqual(cursor.executions[0][1], ())
+        self.assertNotIn("LIMIT", cursor.executions[0][0])
+        self.assertEqual(result[0]["city"], "서울특별시")
+        self.assertEqual(result[0]["district"], "성동구")
 
 
 if __name__ == "__main__":

@@ -21,6 +21,7 @@ from bus_api import get_response_items, get_service_key
 from place_filter import (
     ACCESSIBILITY_FILTER_GROUPS,
     AccessibilityFilter,
+    search_place_options,
     search_places,
 )
 
@@ -194,6 +195,7 @@ def get_place_filters():
 @app.get("/places", response_model=PlaceFilterResponse)
 def get_places(
     filters: list[AccessibilityFilter] = Query(default=[]),
+    q: str = Query(default="", max_length=100),
     page: int = Query(default=1, ge=1),
     page_size: int = Query(default=20, ge=1, le=100),
 ):
@@ -203,7 +205,13 @@ def get_places(
     Repeat the filters query parameter to select multiple facilities. A place
     must contain every selected facility (AND semantics).
     """
-    return search_places(filters, page, page_size)
+    return search_places(filters, page, page_size, q)
+
+
+@app.get("/place-options", response_model=list[PlaceOption])
+def get_place_options(q: str = Query(default="", max_length=100)):
+    """Return all lightweight DB place options for the post editor."""
+    return search_place_options(q)
 
 @app.get("/load-post")
 def load_post():

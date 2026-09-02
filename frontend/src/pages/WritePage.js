@@ -1,4 +1,5 @@
 import SortablePhoto from "../components/SortablePhoto";
+import PlaceSelector from "../components/PlaceSelector";
 import { useState, useEffect } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import api from "../services/api";
@@ -92,6 +93,11 @@ function WritePage() {
           return;
       }
 
+      if (!place) {
+          alert("장소를 선택해주세요.");
+          return;
+      }
+
       if (photos.length === 0) {
           alert("사진을 1장 이상 등록해주세요.");
           return;
@@ -160,13 +166,7 @@ function WritePage() {
 
       <h3 style={{ marginTop: "30px" }}>장소</h3>
 
-      <button>
-        장소 선택
-      </button>
-
-      <p style={{ color: "gray" }}>
-        {place || "아직 선택된 장소가 없습니다."}
-      </p>
+      <PlaceSelector value={place} onChange={setPlace} />
 
       <h3 style={{ marginTop: "30px" }}>사진</h3>
 

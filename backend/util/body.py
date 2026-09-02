@@ -1,4 +1,5 @@
 from pydantic import BaseModel, Field
+from typing import Optional
 
 class Post(BaseModel):
     title: str
@@ -51,3 +52,12 @@ class PlaceFilterResponse(BaseModel):
     page: int
     page_size: int
     filters: list[str]
+
+
+class PlaceOption(BaseModel):
+    id: str
+    name: str
+    address: Optional[str] = None
+    type: Optional[str] = None
+    city: Optional[str] = None
+    district: Optional[str] = None

@@ -4,7 +4,7 @@ import util.db as db
 import os
 from pathlib import Path
 
-dotenv.load_dotenv(Path(__file__).resolve().parent / ".env")
+dotenv.load_dotenv(Path(__file__).resolve().parents[1] / ".env")
 
 TYPE_CODE_TO_TEXT = {
     '12': 'tour',
@@ -16,13 +16,16 @@ TYPE_CODE_TO_TEXT = {
     '39': 'food'
 }
 
-r = requests.get(f"https://apis.data.go.kr/B551011/KorWithService2/areaBasedSyncList2?MobileOS=IOS&MobileApp=bef&_type=json&serviceKey={os.environ.get("OPENAPI_KEY")}&numOfRows=20000")
+r = requests.get(f"https://apis.data.go.kr/B551011/KorWithService2/areaBasedSyncList2?MobileOS=IOS&MobileApp=bef&_type=json&serviceKey={os.environ.get('OPENAPI_KEY')}&numOfRows=20000")
 place_list = r.json()['response']['body']['items']['item']
 
 for place in place_list:
     id = place['contentid']
     name = place['title']
     address = place['addr1'] + ' ' + place['addr2']
+    address_parts = address.strip().split()
+    city = address_parts[0] if address_parts else None
+    district = address_parts[1] if len(address_parts) > 1 else None
     _type = TYPE_CODE_TO_TEXT[place['contenttypeid']]
     lat = place['mapx']
     lng = place['mapy']
@@ -41,8 +44,8 @@ for place in place_list:
             if tags_raw[key] != "":
                 tags.append(key)
         if tags != []:
-            query = "INSERT INTO place.place (id, name, lat, lng, post, tag, address, type) VALUES (%s, %s, %s, %s, %s, %s, %s, %s)"
-            params = (id, name, lat, lng, [], tags, address, _type)
+            query = "INSERT INTO place.place (id, name, lat, lng, post, tag, address, type, city, district) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)"
+            params = (id, name, lat, lng, [], tags, address, _type, city, district)
             db.executeQuery(con, query, params)
             print(f"{name} : {tags}")
     else:
@@ -50,4 +53,3 @@ for place in place_list:
         continue
         query = "UPDATE place.place SET name = %s, lat = %s, lng = %s, tag = %s, address = %s, type = %s"
         params = (name, lat, lng, tags, address, _type)
-

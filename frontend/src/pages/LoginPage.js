@@ -8,7 +8,9 @@ function LoginPage() {
 
   const navigate = useNavigate();
 
-  const login = async () => {
+  const login = async (event) => {
+    event.preventDefault();
+
     try {
       const res = await api.post("/login", {
         id,
@@ -48,45 +50,48 @@ function LoginPage() {
         로그인
       </h2>
 
-      <div style={{ marginBottom: "15px" }}>
-        <label>아이디</label>
-        <input
-          type="text"
-          placeholder="아이디를 입력하세요"
-          value={id}
-          onChange={(e) => setId(e.target.value)}
+      <form onSubmit={login}>
+        <div style={{ marginBottom: "15px" }}>
+          <label>아이디</label>
+          <input
+            type="text"
+            placeholder="아이디를 입력하세요"
+            value={id}
+            onChange={(e) => setId(e.target.value)}
+            style={{
+              width: "100%",
+              padding: "10px",
+              marginTop: "5px",
+            }}
+          />
+        </div>
+
+        <div style={{ marginBottom: "20px" }}>
+          <label>비밀번호</label>
+          <input
+            type="password"
+            placeholder="비밀번호를 입력하세요"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            style={{
+              width: "100%",
+              padding: "10px",
+              marginTop: "5px",
+            }}
+          />
+        </div>
+
+        <button
+          type="submit"
           style={{
             width: "100%",
-            padding: "10px",
-            marginTop: "5px",
+            padding: "12px",
+            cursor: "pointer",
           }}
-        />
-      </div>
-
-      <div style={{ marginBottom: "20px" }}>
-        <label>비밀번호</label>
-        <input
-          type="password"
-          placeholder="비밀번호를 입력하세요"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          style={{
-            width: "100%",
-            padding: "10px",
-            marginTop: "5px",
-          }}
-        />
-      </div>
-
-      <button onClick={login}
-        style={{
-          width: "100%",
-          padding: "12px",
-          cursor: "pointer",
-        }}
-      >
-        로그인
-      </button>
+        >
+          로그인
+        </button>
+      </form>
 
       <p
         style={{

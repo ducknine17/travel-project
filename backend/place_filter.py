@@ -97,16 +97,24 @@ ACCESSIBILITY_FILTER_GROUPS = [
 ]
 
 
-def search_places(filters, page, page_size):
+def search_places(filters, page, page_size, query=""):
     """Return places containing every requested accessibility tag."""
     selected = list(dict.fromkeys(item.value for item in filters))
+    keyword = query.strip()
     offset = (page - 1) * page_size
-    where_sql = ""
+    conditions = []
     params = []
 
     if selected:
-        where_sql = "WHERE COALESCE(tag, ARRAY[]::varchar[]) @> %s::varchar[]"
+        conditions.append("COALESCE(tag, ARRAY[]::varchar[]) @> %s::varchar[]")
         params.append(selected)
+
+    if keyword:
+        conditions.append("(name ILIKE %s OR address ILIKE %s)")
+        search_pattern = f"%{keyword}%"
+        params.extend([search_pattern, search_pattern])
+
+    where_sql = f"WHERE {' AND '.join(conditions)}" if conditions else ""
 
     connection = db.connect()
     cursor = connection.cursor()
@@ -151,3 +159,44 @@ def search_places(filters, page, page_size):
         "page_size": page_size,
         "filters": selected,
     }
+
+
+def search_place_options(query=""):
+    """Return every lightweight place option matching a name or address."""
+    keyword = query.strip()
+    where_sql = ""
+    params = []
+
+    if keyword:
+        where_sql = "WHERE name ILIKE %s OR address ILIKE %s"
+        search_pattern = f"%{keyword}%"
+        params.extend([search_pattern, search_pattern])
+
+    connection = db.connect()
+    cursor = connection.cursor()
+    try:
+        cursor.execute(
+            f"""
+            SELECT id, name, address, type, city, district
+            FROM place.place
+            {where_sql}
+            ORDER BY name ASC, id ASC
+            """,
+            tuple(params),
+        )
+        rows = cursor.fetchall()
+    finally:
+        cursor.close()
+        connection.close()
+
+    return [
+        {
+            "id": row[0],
+            "name": row[1],
+            "address": row[2],
+            "type": row[3],
+            "city": row[4],
+            "district": row[5],
+        }
+        for row in rows
+    ]
