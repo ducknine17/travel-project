@@ -1,36 +1,66 @@
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useState, useEffect } from "react";
 import api from "../services/api";
 
 function Header() {
   const navigate = useNavigate();
+  const location = useLocation();
 
-  const isLogin = !!localStorage.getItem("token");
+  const [authStatus, setAuthStatus] = useState(
+    localStorage.getItem("token") ? "checking" : "unauthenticated"
+  );
   const [username, setUsername] = useState("");
 
   const [showMenu, setShowMenu] = useState(false);
 
   useEffect(() => {
-    if (!isLogin) return;
+    const token = localStorage.getItem("token");
+
+    if (!token) {
+      setAuthStatus("unauthenticated");
+      setUsername("");
+      return;
+    }
+
+    let isCancelled = false;
+    setAuthStatus("checking");
 
     const loadMe = async () => {
       try {
         const res = await api.get("/me");
-        console.log(res.data);
+        if (isCancelled) return;
+
         setUsername(res.data.username);
+        setAuthStatus("authenticated");
       } catch (err) {
+        if (isCancelled) return;
+
         console.error(err);
+        if (err.response?.status === 401) {
+          localStorage.removeItem("token");
+        }
+        setUsername("");
+        setShowMenu(false);
+        setAuthStatus("unauthenticated");
       }
     };
 
     loadMe();
-  }, [isLogin]);
+
+    return () => {
+      isCancelled = true;
+    };
+  }, [location.pathname]);
+
+  const isLogin = authStatus === "authenticated";
 
   const logout = () => {
     localStorage.removeItem("token");
+    setUsername("");
+    setShowMenu(false);
+    setAuthStatus("unauthenticated");
 
     navigate("/");
-    window.location.reload();
   };
 
   return (
@@ -68,12 +98,12 @@ function Header() {
           alignItems: "center",
         }}
       >
-        {!isLogin ? (
+        {authStatus === "unauthenticated" ? (
           <>
             <Link to="/login">로그인</Link>
             <Link to="/register">회원가입</Link>
           </>
-        ) : (
+        ) : authStatus === "authenticated" ? (
           <>
             <div style={{ position: "relative" }}>
               <span
@@ -134,7 +164,7 @@ function Header() {
               로그아웃
             </button>
           </>
-        )}
+        ) : null}
       </div>
     </header>
   );
