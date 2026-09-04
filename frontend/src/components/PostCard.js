@@ -2,6 +2,7 @@ import { useNavigate } from "react-router-dom";
 import "../styles/PostCard.css";
 import api from "../services/api";
 import { useEffect, useState } from "react";
+import { getImageSrc } from "../utils/postUtils";
 
 function PostCard({ post, liked: initialLiked = false }) {
 
@@ -32,6 +33,11 @@ function PostCard({ post, liked: initialLiked = false }) {
         }
 
         try {
+
+            if (post.id?.startsWith("mock-")) {
+                setLiked(!liked);
+                return;
+            }
 
             if (!liked) {
 
@@ -64,11 +70,7 @@ function PostCard({ post, liked: initialLiked = false }) {
 
                 {post.photo && post.photo.length > 0 && (
                     <img
-                        src={
-                            api.defaults.baseURL +
-                            "/image/" +
-                            encodeURIComponent(post.photo[0])
-                        }
+                        src={getImageSrc(post.photo[0])}
                         alt="대표사진"
                     />
                 )}

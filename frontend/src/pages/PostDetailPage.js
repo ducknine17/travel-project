@@ -1,6 +1,7 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import api from "../services/api";
+import { getImageSrc, getTagLabel, getTagRating } from "../utils/postUtils";
 
 function PostDetailPage() {
 
@@ -25,22 +26,22 @@ function PostDetailPage() {
 
   const navigate = useNavigate();
 
-  useEffect(() => {
-    loadPost();
-  }, []);
-
-  const loadPost = async () => {
+  const loadPost = useCallback(async () => {
     try {
       const res = await api.get("/load-post");
 
-      const foundPost = res.data.find((p) => p.id === id);
+      const foundPost = (res.data || []).find((p) => p.id === id);
 
       setPost(foundPost);
 
     } catch (err) {
       console.error(err);
     }
-  };
+  }, [id]);
+
+  useEffect(() => {
+    loadPost();
+  }, [loadPost]);
 
   const editPost = () => {
       navigate(`/edit/${post.id}`);
@@ -83,7 +84,7 @@ function PostDetailPage() {
       {post.photo?.map((img, index) => (
         <img
           key={index}
-          src={`${api.defaults.baseURL}/image/${encodeURIComponent(img)}`}
+          src={getImageSrc(img)}
           alt={`사진 ${index + 1}`}
           style={{
             width: "100%",
@@ -93,6 +94,28 @@ function PostDetailPage() {
         />
       ))}
       <p>{post.content}</p>
+      {post.tag?.length > 0 && (
+        <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
+          {post.tag.map((tag) => {
+            const rating = getTagRating(tag);
+
+            return (
+              <span
+                key={tag}
+                style={{
+                  padding: "7px 10px",
+                  borderRadius: "999px",
+                  background: "#eef7f1",
+                  color: "#294d39",
+                }}
+              >
+                {getTagLabel(tag)}
+                {rating > 0 && ` ${"★".repeat(rating)}${"☆".repeat(5 - rating)}`}
+              </span>
+            );
+          })}
+        </div>
+      )}
       <hr />
       <p>작성자 : {post.author}</p>
       <p>좋아요 : {post.likes}</p>

@@ -33,9 +33,10 @@ function BrowsePage() {
     const loadPosts = async () => {
         try {
             const res = await api.get("/load-post");
-            setPosts(res.data);
+            setPosts(res.data || []);
         } catch (err) {
             console.log(err);
+            setPosts([]);
         }
     };
 

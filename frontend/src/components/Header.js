@@ -131,7 +131,23 @@ function Header() {
                     minWidth: "150px",
                     zIndex: 100,
                   }}
-                >
+                  >
+                    <div
+                      onClick={() => navigate("/mypage")}
+                      style={{
+                          padding: "12px 16px",
+                          cursor: "pointer",
+                          transition: "0.2s",
+                      }}
+                      onMouseEnter={(e) =>
+                        (e.target.style.background = "#f5f5f5")
+                      }
+                      onMouseLeave={(e) =>
+                        (e.target.style.background = "white")
+                      }
+                    >
+                      마이페이지
+                    </div>
                   <div
                     onClick={() => navigate("/profile/edit")}
                     style={{

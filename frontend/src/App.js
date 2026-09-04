@@ -9,6 +9,7 @@ import RegisterPage from "./pages/RegisterPage";
 import ValidatePage from "./pages/ValidatePage";
 import MapPage from "./pages/MapPage";
 import ProfileEditPage from "./pages/ProfileEditPage";
+import MyPage from "./pages/MyPage";
 
 
 function App() {
@@ -26,6 +27,7 @@ function App() {
         <Route path="/validate/:id" element={<ValidatePage />} />
         <Route path="/map" element={<MapPage />} />
         <Route path="/profile/edit" element={<ProfileEditPage />} />
+        <Route path="/mypage" element={<MyPage />} />
       </Routes>
     </BrowserRouter>
   );

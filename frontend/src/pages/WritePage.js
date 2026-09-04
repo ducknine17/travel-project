@@ -1,8 +1,14 @@
 import SortablePhoto from "../components/SortablePhoto";
 import PlaceSelector from "../components/PlaceSelector";
-import { useState, useEffect } from "react";
+import { useCallback, useState, useEffect } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import api from "../services/api";
+import {
+  encodeTagRating,
+  getImageSrc,
+  getTagLabel,
+  getTagRating,
+} from "../utils/postUtils";
 
 import {
   DndContext,
@@ -21,12 +27,8 @@ function WritePage() {
   const [place, setPlace] = useState("");
   const navigate = useNavigate();
   const { id } = useParams();
-  const [tags, setTags] = useState([]);
-  useEffect(() => {
-      if (id) {
-          loadPost();
-      }
-  }, [id]);
+  const [tagRatings, setTagRatings] = useState({});
+  const [existingPhotos, setExistingPhotos] = useState([]);
   const tagList = [
     "♿ 휠체어",
     "🛗 엘리베이터",
@@ -39,17 +41,30 @@ function WritePage() {
     "🍴 음식점",
     "🏞 관광지",
   ];
+  const selectedTags = Object.keys(tagRatings);
+
   const toggleTag = (tag) => {
-    if (tags.includes(tag)) {
-      setTags(tags.filter((t) => t !== tag));
+    if (tagRatings[tag]) {
+      const nextRatings = { ...tagRatings };
+      delete nextRatings[tag];
+      setTagRatings(nextRatings);
     } else {
-      setTags([...tags, tag]);
+      setTagRatings({
+        ...tagRatings,
+        [tag]: 3,
+      });
     }
+  };
+  const setTagRating = (tag, rating) => {
+    setTagRatings({
+      ...tagRatings,
+      [tag]: rating,
+    });
   };
   const [photos, setPhotos] = useState([]);
   const handlePhotoChange = (e) => {
     const files = Array.from(e.target.files);
-    if (photos.length + files.length > 10) {
+    if (existingPhotos.length + photos.length + files.length > 10) {
       alert("사진은 최대 10장까지 가능합니다.");
       return;
     }
@@ -62,6 +77,9 @@ function WritePage() {
   const removePhoto = (id) => {
     setPhotos((prev) => prev.filter((photo) => photo.id !== id));
   };
+  const removeExistingPhoto = (photoName) => {
+    setExistingPhotos((prev) => prev.filter((photo) => photo !== photoName));
+  };
   const handleDragEnd = (event) => {
     const { active, over } = event;
     if (!over || active.id === over.id) return;
@@ -69,7 +87,7 @@ function WritePage() {
     const newIndex = photos.findIndex((p) => p.id === over.id);
     setPhotos(arrayMove(photos, oldIndex, newIndex));
   };
-  const loadPost = async () => {
+  const loadPost = useCallback(async () => {
     try {
       const res = await api.get("/load-post");
       const foundPost = res.data.find((p) => p.id === id);
@@ -77,11 +95,29 @@ function WritePage() {
       setTitle(foundPost.title);
       setContent(foundPost.content);
       setPlace(foundPost.place);
-      setTags(foundPost.tag);
+      setExistingPhotos(foundPost.photo || []);
+      setTagRatings(
+        (foundPost.tag || []).reduce((nextRatings, tag) => {
+          const label = getTagLabel(tag);
+          const rating = getTagRating(tag) || 3;
+          return label
+            ? {
+                ...nextRatings,
+                [label]: rating,
+              }
+            : nextRatings;
+        }, {})
+      );
     } catch (error) {
       console.error(error);
     }
-  };
+  }, [id]);
+
+  useEffect(() => {
+      if (id) {
+          loadPost();
+      }
+  }, [id, loadPost]);
   const handleSubmit = async () => {
       if (!title.trim()) {
           alert("제목을 입력해주세요.");
@@ -98,7 +134,7 @@ function WritePage() {
           return;
       }
 
-      if (photos.length === 0) {
+      if (photos.length === 0 && existingPhotos.length === 0) {
           alert("사진을 1장 이상 등록해주세요.");
           return;
       }
@@ -120,9 +156,11 @@ function WritePage() {
           const postData = {
               title,
               content,
-              photo: uploadedPhotos,
+              photo: [...existingPhotos, ...uploadedPhotos],
               place,
-              tag: tags,
+              tag: Object.entries(tagRatings).map(([tag, rating]) =>
+                encodeTagRating(tag, rating)
+              ),
           };
 
           console.log(postData);
@@ -179,6 +217,49 @@ function WritePage() {
 
       <p>최대 10장까지 업로드 가능합니다.</p>
 
+      {existingPhotos.length > 0 && (
+        <div
+          style={{
+            display: "flex",
+            flexWrap: "wrap",
+            gap: "15px",
+            marginTop: "20px",
+          }}
+        >
+          {existingPhotos.map((photo) => (
+            <div
+              key={photo}
+              style={{
+                width: "120px",
+                position: "relative",
+              }}
+            >
+              <img
+                src={getImageSrc(photo)}
+                alt="기존 사진"
+                style={{
+                  width: "120px",
+                  height: "120px",
+                  objectFit: "cover",
+                  borderRadius: "8px",
+                }}
+              />
+              <button
+                type="button"
+                onClick={() => removeExistingPhoto(photo)}
+                style={{
+                  position: "absolute",
+                  top: "6px",
+                  right: "6px",
+                }}
+              >
+                삭제
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
+
       <DndContext
         collisionDetection={closestCenter}
         onDragEnd={handleDragEnd}
@@ -216,34 +297,72 @@ function WritePage() {
           marginTop: "10px",
         }}
       >
-        {tagList.map((tag) => (
-          <button
-            key={tag}
-            type="button"
-            onClick={() => toggleTag(tag)}
-            style={{
-              padding: "10px 16px",
-              borderRadius: "999px",
-              border: tags.includes(tag)
-                ? "2px solid #5B8DEF"
-                : "1px solid #ccc",
-              backgroundColor: tags.includes(tag)
-                ? "#5B8DEF"
-                : "white",
-              color: tags.includes(tag)
-                ? "white"
-                : "#333",
-              cursor: "pointer",
-              transition: "0.2s",
-            }}
-          >
-            {tag}
-          </button>
-        ))}
+        {tagList.map((tag) => {
+          const isSelected = Boolean(tagRatings[tag]);
+
+          return (
+            <div
+              key={tag}
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: "8px",
+                padding: "8px 10px",
+                borderRadius: "12px",
+                border: isSelected
+                  ? "2px solid #5B8DEF"
+                  : "1px solid #ccc",
+                backgroundColor: isSelected ? "#eef4ff" : "white",
+              }}
+            >
+              <button
+                type="button"
+                onClick={() => toggleTag(tag)}
+                style={{
+                  border: "none",
+                  background: "transparent",
+                  color: "#333",
+                  cursor: "pointer",
+                  fontWeight: isSelected ? "bold" : "normal",
+                }}
+              >
+                {tag}
+              </button>
+
+              {isSelected && (
+                <div style={{ display: "flex", gap: "2px" }}>
+                  {[1, 2, 3, 4, 5].map((rating) => (
+                    <button
+                      key={rating}
+                      type="button"
+                      aria-label={`${tag} ${rating}점`}
+                      onClick={() => setTagRating(tag, rating)}
+                      style={{
+                        border: "none",
+                        background: "transparent",
+                        color: rating <= tagRatings[tag] ? "#FFB400" : "#bbb",
+                        cursor: "pointer",
+                        fontSize: "18px",
+                        padding: "0 1px",
+                      }}
+                    >
+                      ★
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          );
+        })}
       </div>
 
       <p style={{ marginTop: "12px", color: "#666" }}>
-        선택된 태그 : {tags.length === 0 ? "없음" : tags.join(", ")}
+        선택된 태그 :{" "}
+        {selectedTags.length === 0
+          ? "없음"
+          : selectedTags
+              .map((tag) => `${tag} ${tagRatings[tag]}점`)
+              .join(", ")}
       </p>
 
       <h3 style={{ marginTop: "30px" }}>내용</h3>
