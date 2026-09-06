@@ -18,15 +18,16 @@ def connect():
 
 def executeQuery(connect, query, params=None):
     cur = connect.cursor()
+    try:
+        if params is not None:
+            cur.execute(query, params)
+        else:
+            cur.execute(query)
 
-    if params:
-        cur.execute(query, params)
-    else:
-        cur.execute(query)
+        if query.strip().upper().startswith("SELECT"):
+            return cur.fetchall()
 
-    if query.strip().upper().startswith("SELECT"):
-        result = cur.fetchall()
-        return result
-    else:
         connect.commit()
         return None
+    finally:
+        cur.close()

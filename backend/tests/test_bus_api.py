@@ -3,7 +3,27 @@ import unittest
 from urllib.parse import urlencode
 from unittest.mock import patch
 
-from bus_api import get_response_items, get_service_key
+from bus_api import get_osm_bus_stations, get_response_items, get_service_key
+
+
+class FakeResponse:
+    def raise_for_status(self):
+        pass
+
+    def json(self):
+        return {
+            "elements": [
+                {
+                    "id": 123,
+                    "lat": 37.5,
+                    "lon": 127.0,
+                    "tags": {
+                        "name": "테스트 정류장",
+                        "route_ref": "100;200",
+                    },
+                }
+            ]
+        }
 
 
 class BusApiTest(unittest.TestCase):
@@ -23,6 +43,17 @@ class BusApiTest(unittest.TestCase):
         data = {"response": {"body": {"items": None}}}
 
         self.assertEqual(get_response_items(data), [])
+
+    @patch("bus_api.requests.get", return_value=FakeResponse())
+    def test_returns_osm_stations_as_non_arrival_fallback(self, get):
+        stations = get_osm_bus_stations(37.5, 127.0)
+
+        self.assertEqual(stations[0]["id"], "osm-123")
+        self.assertEqual(stations[0]["name"], "테스트 정류장")
+        self.assertEqual(stations[0]["routes"], ["100", "200"])
+        self.assertFalse(stations[0]["arrivalSupported"])
+        self.assertEqual(stations[0]["source"], "openstreetmap")
+        self.assertIn("around:1500,37.5,127.0", get.call_args.kwargs["params"]["data"])
 
 
 if __name__ == "__main__":

@@ -17,7 +17,7 @@ import hashlib
 import bcrypt
 import time
 import shutil
-from bus_api import get_response_items, get_service_key
+from bus_api import get_osm_bus_stations, get_response_items, get_service_key
 from place_filter import (
     ACCESSIBILITY_FILTER_GROUPS,
     AccessibilityFilter,
@@ -47,7 +47,7 @@ def get_bus_location(
     city_code: str,
     route_id: str
 ):
-    url = "http://apis.data.go.kr/1613000/BusLcInfoInqireService/getRouteAcctoBusLcList"
+    url = "https://apis.data.go.kr/1613000/BusLcInfoInqireService/getRouteAcctoBusLcList"
 
     params = {
         "serviceKey": get_service_key(),
@@ -59,7 +59,7 @@ def get_bus_location(
     }
 
     try:
-        response = requests.get(url, params=params, timeout=5)
+        response = requests.get(url, params=params, timeout=10)
         response.raise_for_status()
 
         data = response.json()
@@ -82,7 +82,7 @@ def get_bus_location(
 
         return buses
 
-    except requests.RequestException as e:
+    except (requests.RequestException, ValueError) as e:
         raise HTTPException(
             status_code=500,
             detail=f"버스 API 요청 실패: {str(e)}"
@@ -94,7 +94,7 @@ def get_bus_stations(
     latitude: float,
     longitude: float
 ):
-    url = "http://apis.data.go.kr/1613000/BusSttnInfoInqireService/getCrdntPrxmtSttnList"
+    url = "https://apis.data.go.kr/1613000/BusSttnInfoInqireService/getCrdntPrxmtSttnList"
 
     params = {
         "serviceKey": get_service_key(),
@@ -109,7 +109,7 @@ def get_bus_stations(
         response = requests.get(
             url,
             params=params,
-            timeout=5
+            timeout=3
         )
 
         response.raise_for_status()
@@ -127,15 +127,24 @@ def get_bus_stations(
                 "latitude": station.get("gpslati"),
                 "longitude": station.get("gpslong"),
                 "cityCode": station.get("citycode"),
+                "routes": [],
+                "arrivalSupported": True,
+                "source": "public-data",
             })
 
         return stations
 
-    except requests.RequestException as e:
-        raise HTTPException(
-            status_code=500,
-            detail=f"버스 정류장 API 요청 실패: {str(e)}"
-        )
+    except (requests.RequestException, ValueError) as e:
+        try:
+            return get_osm_bus_stations(latitude, longitude)
+        except (requests.RequestException, ValueError) as fallback_error:
+            raise HTTPException(
+                status_code=502,
+                detail=(
+                    f"버스 정류장 API 요청 실패: {str(e)}; "
+                    f"보조 정류장 API 요청 실패: {str(fallback_error)}"
+                ),
+            )
 
 
 @app.get("/bus-arrival")
@@ -157,7 +166,7 @@ def get_bus_arrival(
     }
 
     try:
-        response = requests.get(url, params=params, timeout=5)
+        response = requests.get(url, params=params, timeout=10)
         response.raise_for_status()
         items = get_response_items(response.json())
 
@@ -216,11 +225,40 @@ def get_place_options(q: str = Query(default="", max_length=100)):
 @app.get("/load-post")
 def load_post():
     con = db.connect()
-    result = db.executeQuery(con, "SELECT * FROM post.post")
-    res = []
-    res = convertDict(result, ["id", "title", "author", "written_date", "content", "photo", "views", "likes", "place", "tag"])
+    try:
+        result = db.executeQuery(
+            con,
+            """
+            SELECT id, title, author, written_date, content, photo,
+                   views, likes, place, tag
+            FROM post.post
+            ORDER BY written_date DESC, id DESC
+            """,
+        )
+        return convertDict(result, ["id", "title", "author", "written_date", "content", "photo", "views", "likes", "place", "tag"])
+    finally:
+        con.close()
 
-    return res
+
+@app.get("/posts/{post_id}")
+def get_post(post_id: str):
+    con = db.connect()
+    try:
+        result = db.executeQuery(
+            con,
+            """
+            SELECT id, title, author, written_date, content, photo,
+                   views, likes, place, tag
+            FROM post.post
+            WHERE id = %s
+            """,
+            (post_id,),
+        )
+        if not result:
+            raise HTTPException(404, "post not found")
+        return convertDict(result, ["id", "title", "author", "written_date", "content", "photo", "views", "likes", "place", "tag"])[0]
+    finally:
+        con.close()
 
 @app.post("/write-post")
 def write_post(post: Post, uid: str = Depends(get_current_user_id)):
@@ -240,9 +278,11 @@ def write_post(post: Post, uid: str = Depends(get_current_user_id)):
     author = user_result[0][0]
     query = "INSERT INTO post.post (id, title, author, written_date, content, photo, views, likes, place, tag) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)"
     params = (id, post.title, author, written_date, post.content, post.photo, view, like, post.place, post.tag)
-    db.executeQuery(con, query, params)
-
-    raise HTTPException(200)
+    try:
+        db.executeQuery(con, query, params)
+        return {"id": id, "message": "success"}
+    finally:
+        con.close()
 
 
 @app.put("/edit-post")
@@ -264,9 +304,11 @@ def edit_post(post: PostEdit, uid: str = Depends(get_current_user_id)):
 
     query = "UPDATE post.post SET title = %s, written_date = %s, content = %s, place = %s, photo = %s,  tag = %s WHERE id = %s AND author = %s"
     params = (post.title, written_date, post.content, post.place, post.photo, post.tag, post.id, author)
-    db.executeQuery(con, query, params)
-
-    raise HTTPException(200)
+    try:
+        db.executeQuery(con, query, params)
+        return {"id": post.id, "message": "success"}
+    finally:
+        con.close()
 
 @app.delete("/delete-post")
 def delete_post(post: PostDelete, uid: str = Depends(get_current_user_id)):
@@ -285,9 +327,11 @@ def delete_post(post: PostDelete, uid: str = Depends(get_current_user_id)):
 
     query = "DELETE FROM post.post WHERE id = %s AND author = %s"
     params = (post.id, author)
-    db.executeQuery(con, query, params)
-
-    raise HTTPException(200)
+    try:
+        db.executeQuery(con, query, params)
+        return {"id": post.id, "message": "success"}
+    finally:
+        con.close()
 
 
 def update_post_like(post_id: str, uid: str, liked: bool):

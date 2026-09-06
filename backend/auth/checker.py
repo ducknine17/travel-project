@@ -3,8 +3,11 @@ import bcrypt
 
 def postChecker(id, author):
     con = connect()
-    query = "SELECT * FROM post.post WHERE id = %s AND author = %s"
-    res = executeQuery(con, query, (id, author))
+    try:
+        query = "SELECT * FROM post.post WHERE id = %s AND author = %s"
+        res = executeQuery(con, query, (id, author))
+    finally:
+        con.close()
 
     if res == []:
         return False
@@ -13,8 +16,11 @@ def postChecker(id, author):
 
 def registerChecker(id):
     con = connect()
-    query = "SELECT * FROM \"user\".user WHERE id = %s"
-    res = executeQuery(con, query, (id,))
+    try:
+        query = "SELECT * FROM \"user\".user WHERE id = %s"
+        res = executeQuery(con, query, (id,))
+    finally:
+        con.close()
     if res == []:
         return False
 
@@ -22,12 +28,18 @@ def registerChecker(id):
 
 def loginChecker(id, password):
     con = connect()
-    query = "SELECT uid, password FROM \"user\".user WHERE id = %s"
-    res = executeQuery(con, query, (id,))
+    try:
+        query = "SELECT uid, password, is_available FROM \"user\".user WHERE id = %s"
+        res = executeQuery(con, query, (id,))
+    finally:
+        con.close()
     if res == []:
         return None
 
-    uid, pw = res[0]
+    uid, pw, is_available = res[0]
+
+    if not is_available:
+        return None
 
     if not bcrypt.checkpw(
         password.encode("utf-8"),
@@ -40,19 +52,22 @@ def loginChecker(id, password):
 
 def validateChecker(id):
     con = connect()
-    query = "SELECT * FROM \"user\".validate WHERE id = %s"
-    res = executeQuery(con, query, (id, ))
-    if res == []:
-        return False
+    try:
+        query = "SELECT * FROM \"user\".validate WHERE id = %s"
+        res = executeQuery(con, query, (id, ))
+        if res == []:
+            return False
 
-    if res[0][2] == True:
-        return False
+        if res[0][2] is True:
+            return False
 
-    uid = res[0][1]
-    query = "UPDATE \"user\".validate SET is_used = true WHERE id = %s"
-    res = executeQuery(con, query, (id, ))
+        uid = res[0][1]
+        query = "UPDATE \"user\".validate SET is_used = true WHERE id = %s"
+        executeQuery(con, query, (id, ))
 
-    query = "UPDATE \"user\".user SET is_available = true WHERE uid = %s"
-    res = executeQuery(con, query, (uid,))
+        query = "UPDATE \"user\".user SET is_available = true WHERE uid = %s"
+        executeQuery(con, query, (uid,))
 
-    return True
+        return True
+    finally:
+        con.close()

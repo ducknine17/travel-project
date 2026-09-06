@@ -4,17 +4,17 @@ from typing import Optional
 class Post(BaseModel):
     title: str
     content: str
-    photo: list
+    photo: list[str]
     place: str
-    tag: list
+    tag: list[str]
 
 class PostEdit(BaseModel):
     id: str
     title: str
     content: str
-    photo: list
+    photo: list[str]
     place: str
-    tag: list
+    tag: list[str]
 
 class PostDelete(BaseModel):
     id: str

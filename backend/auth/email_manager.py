@@ -40,7 +40,7 @@ def send_link(uid, address):
     query = "INSERT INTO \"user\".validate (id, uid, is_used) VALUES (%s, %s, %s)"
     params = (id, uid, False)
     subject = "BEF 인증 이메일"
-    link = f"{os.environ.get("EMAIL_LINK")}/{id}"
+    link = f"{os.environ.get('EMAIL_LINK')}/{id}"
     content = f"<a href='https://bef-trip.my'>bef-trip.my</a> 인증 메일입니다.<br>다음의 링크에 들어가 인증을 완료하세요.<br><a href={link}>{link}</a><br>BEF 팀 드림"
     send_email(subject, content, address)
     db.executeQuery(con, query, params)
