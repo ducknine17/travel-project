@@ -4,12 +4,36 @@ import PostCard from "../components/PostCard";
 import FilterDrawer from "../components/FilterDrawer";
 import "../styles/Browse.css";
 import FilterBar from "../components/FilterBar";
+import { getTagLabel, getTagRating } from "../utils/postUtils";
+
+const EMPTY_FILTERS = { tag: "", location: "", minRating: 0 };
+
+const filterPosts = (posts, filters) => {
+    const location = filters.location.trim().toLocaleLowerCase("ko-KR");
+
+    return posts.filter((post) => {
+        const tags = post.tag || [];
+        const matchingTags = filters.tag
+            ? tags.filter((tag) => getTagLabel(tag) === filters.tag)
+            : tags;
+        const matchesTag = !filters.tag || matchingTags.length > 0;
+        const matchesLocation = !location || (post.place || "")
+            .toLocaleLowerCase("ko-KR")
+            .includes(location);
+        const matchesRating = !filters.minRating || matchingTags.some(
+            (tag) => getTagRating(tag) >= filters.minRating
+        );
+
+        return matchesTag && matchesLocation && matchesRating;
+    });
+};
 
 function BrowsePage() {
 
     const [posts, setPosts] = useState([]);
     const [likedPosts, setLikedPosts] = useState([]);
     const [drawerOpen, setDrawerOpen] = useState(false);
+    const [filters, setFilters] = useState(EMPTY_FILTERS);
 
     useEffect(() => {
         loadPosts();
@@ -64,6 +88,8 @@ function BrowsePage() {
     };
 
     const likedPostIds = likedPosts.map(post => post.id);
+    const filteredPosts = filterPosts(posts, filters);
+    const filteredLikedPosts = filterPosts(likedPosts, filters);
 
     const handleDrawerToggle = () => {
 
@@ -81,13 +107,17 @@ function BrowsePage() {
 
             <h2>둘러보기</h2>
 
-            <FilterBar />
+            <FilterBar
+                filters={filters}
+                onChange={setFilters}
+                onReset={() => setFilters(EMPTY_FILTERS)}
+            />
 
             <FilterDrawer
                 open={drawerOpen}
                 onToggle={handleDrawerToggle}
             >
-                {likedPosts.map(post => (
+                {filteredLikedPosts.map(post => (
                     <PostCard
                         key={post.id}
                         post={post}
@@ -102,13 +132,17 @@ function BrowsePage() {
                 gap: "20px"
             }}>
 
-                {posts.map(post => (
+                {filteredPosts.map(post => (
                     <PostCard
                         key={post.id}
                         post={post}
                         liked={likedPostIds.includes(post.id)}
                     />
                 ))}
+
+                {filteredPosts.length === 0 && (
+                    <p>조건에 맞는 게시글이 없습니다.</p>
+                )}
 
             </div>
 

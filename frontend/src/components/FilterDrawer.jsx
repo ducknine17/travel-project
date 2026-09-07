@@ -6,9 +6,7 @@ function FilterDrawer({ open, onToggle, children }) {
                 <div className="drawer-content">
 
                     <div className="drawer-top">
-                        <button>태그</button>
-                        <button>위치</button>
-                        <button>별점</button>
+                        <h2>좋아요한 여행</h2>
                     </div>
 
                     <div className="drawer-posts">

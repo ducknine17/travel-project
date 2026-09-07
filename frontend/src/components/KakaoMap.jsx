@@ -1,4 +1,59 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
+
+const PLACE_TYPE_LABELS = {
+  tour: "관광지",
+  culture: "문화시설",
+  festival: "축제",
+  sports: "레포츠",
+  stay: "숙박",
+  shopping: "쇼핑",
+  food: "음식점",
+};
+
+const ACCESSIBILITY_LABELS = {
+  parking: "주차",
+  publictransport: "대중교통",
+  route: "접근로",
+  wheelchair: "휠체어",
+  exit: "출입통로",
+  elevator: "엘리베이터",
+  restroom: "화장실",
+  braileblock: "점자블록",
+  helpdog: "보조견 동반",
+  signguide: "수어 안내",
+  stroller: "유모차",
+  lactationroom: "수유실",
+};
+
+const createInfoContent = (title, rows = []) => {
+  const content = document.createElement("div");
+  Object.assign(content.style, {
+    width: "240px",
+    padding: "12px 14px",
+    color: "#1f2937",
+    fontSize: "13px",
+    lineHeight: "1.5",
+    wordBreak: "keep-all",
+  });
+
+  const heading = document.createElement("strong");
+  heading.textContent = title;
+  Object.assign(heading.style, {
+    display: "block",
+    marginBottom: "6px",
+    fontSize: "15px",
+  });
+  content.appendChild(heading);
+
+  rows.filter(Boolean).forEach((row) => {
+    const line = document.createElement("div");
+    line.textContent = row;
+    line.style.marginTop = "3px";
+    content.appendChild(line);
+  });
+
+  return content;
+};
 
 function KakaoMap({
   places = [],
@@ -6,10 +61,11 @@ function KakaoMap({
   onMapMove,
   onStationClick,
 }) {
-  const mapRef = useRef(null);
+  const [map, setMap] = useState(null);
   const placeMarkersRef = useRef([]);
   const stationMarkersRef = useRef([]);
   const infoWindowRef = useRef(null);
+  const lastReportedCenterRef = useRef("");
 
   // 지도는 처음 한 번만 생성
   useEffect(() => {
@@ -18,7 +74,11 @@ function KakaoMap({
       return;
     }
 
+    let isDisposed = false;
+
     window.kakao.maps.load(() => {
+      if (isDisposed) return;
+
       const container = document.getElementById("map");
 
       if (!container) return;
@@ -28,30 +88,33 @@ function KakaoMap({
         level: 10,
       };
 
-      const map = new window.kakao.maps.Map(container, options);
+      const createdMap = new window.kakao.maps.Map(container, options);
+      setMap(createdMap);
 
-      mapRef.current = map;
+      const reportCenter = (latitude, longitude) => {
+        const centerKey = `${latitude.toFixed(6)},${longitude.toFixed(6)}`;
+        if (lastReportedCenterRef.current === centerKey) return;
+
+        lastReportedCenterRef.current = centerKey;
+        onMapMove?.(latitude, longitude);
+      };
+
+      const closeInfoWindow = () => {
+        if (infoWindowRef.current) {
+          infoWindowRef.current.close();
+          infoWindowRef.current = null;
+        }
+      };
 
       // 지도 빈 곳 클릭 → 정보창 닫기
-      window.kakao.maps.event.addListener(map, "click", () => {
-        if (infoWindowRef.current) {
-          infoWindowRef.current.close();
-          infoWindowRef.current = null;
-        }
-      });
+      window.kakao.maps.event.addListener(createdMap, "click", closeInfoWindow);
 
       // 지도 드래그 시작 → 정보창 닫기
-      window.kakao.maps.event.addListener(map, "dragstart", () => {
-        if (infoWindowRef.current) {
-          infoWindowRef.current.close();
-          infoWindowRef.current = null;
-        }
-      });
+      window.kakao.maps.event.addListener(createdMap, "dragstart", closeInfoWindow);
 
       // 지도 이동/확대축소가 끝났을 때
-      window.kakao.maps.event.addListener(map, "idle", () => {
-        const center = map.getCenter();
-
+      const handleIdle = () => {
+        const center = createdMap.getCenter();
         const latitude = center.getLat();
         const longitude = center.getLng();
 
@@ -61,27 +124,50 @@ function KakaoMap({
           longitude
         );
 
-        if (onMapMove) {
-          onMapMove(latitude, longitude);
-        }
-      });
+        reportCenter(latitude, longitude);
+      };
+      window.kakao.maps.event.addListener(createdMap, "idle", handleIdle);
 
-      // 최초 위치에서도 정류장 요청
-      const center = map.getCenter();
+      const reportDefaultCenter = () => {
+        const center = createdMap.getCenter();
+        reportCenter(center.getLat(), center.getLng());
+      };
 
-      if (onMapMove) {
-        onMapMove(
-          center.getLat(),
-          center.getLng()
+      if (navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition(
+          ({ coords }) => {
+            if (isDisposed) return;
+
+            const latitude = Number(coords.latitude);
+            const longitude = Number(coords.longitude);
+            if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) {
+              reportDefaultCenter();
+              return;
+            }
+
+            createdMap.setCenter(new window.kakao.maps.LatLng(latitude, longitude));
+            createdMap.setLevel(5);
+            reportCenter(latitude, longitude);
+          },
+          reportDefaultCenter,
+          {
+            enableHighAccuracy: false,
+            timeout: 7000,
+            maximumAge: 300000,
+          }
         );
+      } else {
+        reportDefaultCenter();
       }
     });
+
+    return () => {
+      isDisposed = true;
+    };
   }, [onMapMove]);
 
   // 여행지 마커
   useEffect(() => {
-    const map = mapRef.current;
-
     if (!map || !window.kakao?.maps) return;
 
     // 기존 마커 제거
@@ -116,14 +202,33 @@ function KakaoMap({
           title: place.name,
         });
 
+      window.kakao.maps.event.addListener(marker, "click", () => {
+        if (infoWindowRef.current) {
+          infoWindowRef.current.close();
+        }
+
+        const facilities = (place.tags || [])
+          .map((tag) => ACCESSIBILITY_LABELS[tag] || tag)
+          .join(", ");
+        const infoWindow = new window.kakao.maps.InfoWindow({
+          content: createInfoContent(`📍 ${place.name}`, [
+            PLACE_TYPE_LABELS[place.type] || place.type,
+            place.address,
+            facilities && `편의시설: ${facilities}`,
+          ]),
+          removable: true,
+        });
+
+        infoWindow.open(map, marker);
+        infoWindowRef.current = infoWindow;
+      });
+
       placeMarkersRef.current.push(marker);
     });
-  }, [places]);
+  }, [map, places]);
 
   // 버스 정류장 마커
   useEffect(() => {
-    const map = mapRef.current;
-
     if (!map || !window.kakao?.maps) return;
 
     // 기존 정류장 마커 제거
@@ -213,18 +318,11 @@ function KakaoMap({
           // 정류장 이름 표시
           const infowindow =
             new window.kakao.maps.InfoWindow({
-              content: `
-                <div
-                  style="
-                    padding: 10px 14px;
-                    font-size: 14px;
-                    font-weight: bold;
-                    white-space: nowrap;
-                  "
-                >
-                  🚌 ${station.name}
-                </div>
-              `,
+              content: createInfoContent(`🚌 ${station.name}`, [
+                station.routes?.length && `노선: ${station.routes.join(", ")}`,
+                station.arrivalSupported === false && "위치 정보만 제공",
+              ]),
+              removable: true,
             });
 
           infowindow.open(map, marker);
@@ -240,7 +338,7 @@ function KakaoMap({
 
       stationMarkersRef.current.push(marker);
     });
-  }, [stations, onStationClick]);
+  }, [map, stations, onStationClick]);
 
   return (
     <div

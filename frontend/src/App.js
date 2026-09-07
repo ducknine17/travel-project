@@ -10,6 +10,7 @@ import ValidatePage from "./pages/ValidatePage";
 import MapPage from "./pages/MapPage";
 import ProfileEditPage from "./pages/ProfileEditPage";
 import MyPage from "./pages/MyPage";
+import ProtectedRoute from "./components/ProtectedRoute";
 
 
 function App() {
@@ -19,15 +20,15 @@ function App() {
 
       <Routes>
         <Route path="/" element={<BrowsePage />} />
-        <Route path="/write" element={<WritePage />} />
-        <Route path="/edit/:id" element={<WritePage />} />
+        <Route path="/write" element={<ProtectedRoute><WritePage /></ProtectedRoute>} />
+        <Route path="/edit/:id" element={<ProtectedRoute><WritePage /></ProtectedRoute>} />
         <Route path="/post/:id" element={<PostDetailPage />} />
         <Route path="/login" element={<LoginPage />} />
         <Route path="/register" element={<RegisterPage />} />
         <Route path="/validate/:id" element={<ValidatePage />} />
         <Route path="/map" element={<MapPage />} />
-        <Route path="/profile/edit" element={<ProfileEditPage />} />
-        <Route path="/mypage" element={<MyPage />} />
+        <Route path="/profile/edit" element={<ProtectedRoute><ProfileEditPage /></ProtectedRoute>} />
+        <Route path="/mypage" element={<ProtectedRoute><MyPage /></ProtectedRoute>} />
       </Routes>
     </BrowserRouter>
   );

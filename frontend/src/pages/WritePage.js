@@ -89,9 +89,8 @@ function WritePage() {
   };
   const loadPost = useCallback(async () => {
     try {
-      const res = await api.get("/load-post");
-      const foundPost = res.data.find((p) => p.id === id);
-      if (!foundPost) return;
+      const res = await api.get(`/posts/${encodeURIComponent(id)}`);
+      const foundPost = res.data;
       setTitle(foundPost.title);
       setContent(foundPost.content);
       setPlace(foundPost.place);

@@ -8,9 +8,13 @@ function PostDetailPage() {
   const { id } = useParams();
 
   const [post, setPost] = useState(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState("");
 
   const [loginUser, setLoginUser] = useState("");
   useEffect(() => {
+    if (!localStorage.getItem("token")) return;
+
     const loadMe = async () => {
       try {
         const res = await api.get("/me");
@@ -27,15 +31,22 @@ function PostDetailPage() {
   const navigate = useNavigate();
 
   const loadPost = useCallback(async () => {
+    setIsLoading(true);
+    setError("");
+
     try {
-      const res = await api.get("/load-post");
-
-      const foundPost = (res.data || []).find((p) => p.id === id);
-
-      setPost(foundPost);
-
+      const res = await api.get(`/posts/${encodeURIComponent(id)}`);
+      setPost(res.data);
     } catch (err) {
       console.error(err);
+      setPost(null);
+      setError(
+        err.response?.status === 404
+          ? "존재하지 않거나 삭제된 게시글입니다."
+          : "게시글을 불러오지 못했습니다."
+      );
+    } finally {
+      setIsLoading(false);
     }
   }, [id]);
 
@@ -67,8 +78,17 @@ function PostDetailPage() {
       }
   };
 
-  if (!post) {
+  if (isLoading) {
     return <div style={{ padding: "30px" }}>불러오는 중...</div>;
+  }
+
+  if (error || !post) {
+    return (
+      <div style={{ padding: "30px" }} role="alert">
+        <p>{error || "게시글을 찾을 수 없습니다."}</p>
+        <button type="button" onClick={() => navigate("/")}>둘러보기로 돌아가기</button>
+      </div>
+    );
   }
 
   return (
