@@ -32,6 +32,7 @@ from bus_api import (
 from place_filter import (
     ACCESSIBILITY_FILTER_GROUPS,
     AccessibilityFilter,
+    get_posts_for_place,
     search_place_options,
     search_places,
 )
@@ -297,7 +298,7 @@ def get_places(
     filters: list[AccessibilityFilter] = Query(default=[]),
     q: str = Query(default="", max_length=100),
     page: int = Query(default=1, ge=1),
-    page_size: int = Query(default=20, ge=1, le=100),
+    page_size: int = Query(default=20, ge=1, le=5000),
 ):
     """
     Filter tourist places by accessibility facilities.
@@ -306,6 +307,12 @@ def get_places(
     must contain every selected facility (AND semantics).
     """
     return search_places(filters, page, page_size, q)
+
+
+@app.get("/places/{place_id}/posts")
+def get_place_posts(place_id: str):
+    """Return posts written for a place selected from the place database."""
+    return get_posts_for_place(place_id)
 
 
 @app.get("/place-options", response_model=list[PlaceOption])

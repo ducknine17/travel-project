@@ -60,10 +60,12 @@ function KakaoMap({
   stations = [],
   buses = [],
   onMapMove,
+  onPlaceClick,
   onStationClick,
 }) {
   const [map, setMap] = useState(null);
   const placeMarkersRef = useRef([]);
+  const placeClustererRef = useRef(null);
   const stationMarkersRef = useRef([]);
   const busMarkersRef = useRef([]);
   const infoWindowRef = useRef(null);
@@ -173,6 +175,10 @@ function KakaoMap({
     if (!map || !window.kakao?.maps) return;
 
     // 기존 마커 제거
+    if (placeClustererRef.current) {
+      placeClustererRef.current.clear();
+      placeClustererRef.current = null;
+    }
     placeMarkersRef.current.forEach((marker) => {
       marker.setMap(null);
     });
@@ -223,11 +229,21 @@ function KakaoMap({
 
         infoWindow.open(map, marker);
         infoWindowRef.current = infoWindow;
+        onPlaceClick?.(place);
       });
 
       placeMarkersRef.current.push(marker);
     });
-  }, [map, places]);
+
+    if (window.kakao.maps.MarkerClusterer) {
+      placeClustererRef.current = new window.kakao.maps.MarkerClusterer({
+        map,
+        markers: placeMarkersRef.current,
+        averageCenter: true,
+        minLevel: 7,
+      });
+    }
+  }, [map, places, onPlaceClick]);
 
   // 버스 정류장 마커
   useEffect(() => {

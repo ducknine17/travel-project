@@ -6,6 +6,9 @@ function MapPage() {
   const [filterGroups, setFilterGroups] = useState([]);
   const [selectedFilters, setSelectedFilters] = useState([]);
   const [places, setPlaces] = useState([]);
+  const [selectedPlace, setSelectedPlace] = useState(null);
+  const [placePosts, setPlacePosts] = useState([]);
+  const [placePostsStatus, setPlacePostsStatus] = useState("idle");
   const [stations, setStations] = useState([]);
 
   // 추가
@@ -21,6 +24,7 @@ function MapPage() {
   const [locationStatus, setLocationStatus] = useState("idle");
   const stationRequestIdRef = useRef(0);
   const routeRequestIdRef = useRef(0);
+  const placePostsRequestIdRef = useRef(0);
 
   useEffect(() => {
     api.get("/places/filters")
@@ -34,6 +38,7 @@ function MapPage() {
     selectedFilters.forEach((filter) =>
       params.append("filters", filter)
     );
+    params.set("page_size", "5000");
 
     api.get("/places", { params })
       .then((response) => {
@@ -41,6 +46,28 @@ function MapPage() {
       })
       .catch((error) => console.log(error));
   }, [selectedFilters]);
+
+  const handlePlaceClick = useCallback((place) => {
+    const requestId = placePostsRequestIdRef.current + 1;
+    placePostsRequestIdRef.current = requestId;
+    setSelectedPlace(place);
+    setPlacePosts([]);
+    setPlacePostsStatus("loading");
+
+    api.get(`/places/${encodeURIComponent(place.id)}/posts`)
+      .then((response) => {
+        if (placePostsRequestIdRef.current !== requestId) return;
+        const posts = response.data || [];
+        setPlacePosts(posts);
+        setPlacePostsStatus(posts.length ? "ready" : "empty");
+      })
+      .catch((error) => {
+        if (placePostsRequestIdRef.current !== requestId) return;
+        console.log("장소 게시글 불러오기 실패:", error);
+        setPlacePosts([]);
+        setPlacePostsStatus("error");
+      });
+  }, []);
 
   // 지도 이동이 끝났을 때 주변 정류장 검색
   const handleMapMove = useCallback((latitude, longitude) => {
@@ -231,8 +258,40 @@ function MapPage() {
         stations={stations}
         buses={buses}
         onMapMove={handleMapMove}
+        onPlaceClick={handlePlaceClick}
         onStationClick={handleStationClick}
       />
+      <p>지도 장소 {places.length.toLocaleString("ko-KR")}개</p>
+
+      {selectedPlace && (
+        <section
+          aria-labelledby="selected-place-posts-title"
+          style={{
+            marginTop: "20px",
+            padding: "15px",
+            border: "1px solid #ddd",
+            borderRadius: "10px",
+          }}
+        >
+          <h3 id="selected-place-posts-title">📍 {selectedPlace.name} 여행 글</h3>
+          {placePostsStatus === "loading" ? (
+            <p>게시글을 불러오는 중입니다...</p>
+          ) : placePostsStatus === "error" ? (
+            <p role="alert">이 장소의 게시글을 불러오지 못했습니다.</p>
+          ) : placePostsStatus === "empty" ? (
+            <p>아직 이 장소에 작성된 글이 없습니다.</p>
+          ) : (
+            <ul style={{ paddingLeft: "20px" }}>
+              {placePosts.map((post) => (
+                <li key={post.id} style={{ marginBottom: "8px" }}>
+                  <a href={`/post/${encodeURIComponent(post.id)}`}>{post.title}</a>
+                  {post.author && ` · ${post.author}`}
+                </li>
+              ))}
+            </ul>
+          )}
+        </section>
+      )}
 
       {stationsLoading && <p role="status">주변 버스 정류장을 찾는 중입니다...</p>}
       {stationsError && <p role="alert">{stationsError}</p>}

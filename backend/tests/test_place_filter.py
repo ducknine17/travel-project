@@ -1,7 +1,12 @@
 import unittest
 from unittest.mock import patch
 
-from place_filter import AccessibilityFilter, search_place_options, search_places
+from place_filter import (
+    AccessibilityFilter,
+    get_posts_for_place,
+    search_place_options,
+    search_places,
+)
 
 
 class FakeCursor:
@@ -37,6 +42,29 @@ class FakeConnection:
 
 
 class SearchPlacesTest(unittest.TestCase):
+    def test_returns_posts_matching_the_selected_place_id(self):
+        cursor = FakeCursor(rows=[(
+            "post-1",
+            "경복궁 여행",
+            "여행자",
+            "2026-09-10",
+            "내용",
+            [],
+            3,
+            1,
+            "경복궁",
+            [],
+        )])
+        connection = FakeConnection(cursor)
+
+        with patch("place_filter.db.connect", return_value=connection):
+            result = get_posts_for_place("126508")
+
+        self.assertEqual(result[0]["id"], "post-1")
+        self.assertEqual(result[0]["title"], "경복궁 여행")
+        self.assertEqual(cursor.executions[0][1], ("126508",))
+        self.assertIn("p.place = pl.name", cursor.executions[0][0])
+
     def test_uses_all_selected_tags_and_pagination(self):
         cursor = FakeCursor(
             total=1,

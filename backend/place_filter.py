@@ -200,3 +200,31 @@ def search_place_options(query=""):
         }
         for row in rows
     ]
+
+
+def get_posts_for_place(place_id):
+    """Return posts whose selected place matches the requested DB place."""
+    connection = db.connect()
+    cursor = connection.cursor()
+    try:
+        cursor.execute(
+            """
+            SELECT p.id, p.title, p.author, p.written_date, p.content,
+                   p.photo, p.views, p.likes, p.place, p.tag
+            FROM post.post AS p
+            JOIN place.place AS pl
+              ON pl.id = %s AND p.place = pl.name
+            ORDER BY p.written_date DESC, p.id DESC
+            """,
+            (place_id,),
+        )
+        rows = cursor.fetchall()
+    finally:
+        cursor.close()
+        connection.close()
+
+    keys = (
+        "id", "title", "author", "written_date", "content",
+        "photo", "views", "likes", "place", "tag",
+    )
+    return [dict(zip(keys, row)) for row in rows]

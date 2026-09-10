@@ -5,9 +5,11 @@ import api from "../services/api";
 jest.mock("../services/api", () => ({ get: jest.fn() }));
 
 jest.mock("../components/KakaoMap", () => function MockKakaoMap({
+  places,
   stations,
   buses,
   onMapMove,
+  onPlaceClick,
   onStationClick,
 }) {
   return (
@@ -15,6 +17,15 @@ jest.mock("../components/KakaoMap", () => function MockKakaoMap({
       <button type="button" onClick={() => onMapMove(37.5665, 126.978)}>
         지도 이동
       </button>
+      {places.map((place) => (
+        <button
+          type="button"
+          key={place.id}
+          onClick={() => onPlaceClick(place)}
+        >
+          {place.name}
+        </button>
+      ))}
       {stations.map((station) => (
         <button
           type="button"
@@ -27,6 +38,42 @@ jest.mock("../components/KakaoMap", () => function MockKakaoMap({
       <span data-testid="bus-count">{buses.length}</span>
     </div>
   );
+});
+
+test("지도용 장소를 모두 요청하고 핀을 누르면 해당 장소 게시글을 표시한다", async () => {
+  api.get.mockImplementation((url, options) => {
+    if (url === "/places/filters") return Promise.resolve({ data: { groups: [] } });
+    if (url === "/places") {
+      expect(options.params.get("page_size")).toBe("5000");
+      return Promise.resolve({
+        data: {
+          items: [{
+            id: "126508",
+            name: "경복궁",
+            lat: 126.9769,
+            lng: 37.5796,
+            address: "서울특별시 종로구",
+            type: "tour",
+            tags: [],
+          }],
+        },
+      });
+    }
+    if (url === "/places/126508/posts") {
+      return Promise.resolve({
+        data: [{ id: "post-1", title: "휠체어로 다녀온 경복궁", author: "여행자" }],
+      });
+    }
+    return Promise.reject(new Error(`unexpected request: ${url}`));
+  });
+
+  render(<MapPage />);
+
+  fireEvent.click(await screen.findByRole("button", { name: "경복궁" }));
+  expect(await screen.findByRole("link", { name: "휠체어로 다녀온 경복궁" }))
+    .toHaveAttribute("href", "/post/post-1");
+  expect(screen.getByText(/여행자/)).toBeInTheDocument();
+  expect(screen.getByText("지도 장소 1개")).toBeInTheDocument();
 });
 
 test("서울 정류장을 누르면 노선과 실시간 차량 위치를 지도에 전달한다", async () => {

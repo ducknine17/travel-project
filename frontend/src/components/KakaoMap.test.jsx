@@ -32,6 +32,10 @@ const createKakaoMock = () => {
     open: jest.fn(),
     close: jest.fn(),
   }));
+  const MarkerClusterer = jest.fn((options) => ({
+    options,
+    clear: jest.fn(),
+  }));
 
   window.kakao = {
     maps: {
@@ -43,6 +47,7 @@ const createKakaoMock = () => {
       Size: jest.fn(),
       Point: jest.fn(),
       InfoWindow,
+      MarkerClusterer,
       event: { addListener: jest.fn() },
     },
   };
@@ -98,6 +103,7 @@ test("위치 확인이 실패하면 기존 전국 중심을 유지한다", async
 
 test("여행지 핀을 누르면 장소 정보를 안전한 텍스트로 표시한다", async () => {
   const map = createKakaoMock();
+  const onPlaceClick = jest.fn();
   Object.defineProperty(navigator, "geolocation", {
     configurable: true,
     value: {
@@ -116,6 +122,7 @@ test("여행지 핀을 누르면 장소 정보를 안전한 텍스트로 표시�
         lat: 127.037,
         lng: 37.544,
       }]}
+      onPlaceClick={onPlaceClick}
     />
   );
 
@@ -135,6 +142,10 @@ test("여행지 핀을 누르면 장소 정보를 안전한 텍스트로 표시�
   expect(infoOptions.content.textContent).toContain("주차, 휠체어");
   const infoWindow = window.kakao.maps.InfoWindow.mock.results[0].value;
   expect(infoWindow.open).toHaveBeenCalledWith(map, marker);
+  expect(onPlaceClick).toHaveBeenCalledWith(expect.objectContaining({ id: "place-1" }));
+  expect(window.kakao.maps.MarkerClusterer).toHaveBeenCalledWith(
+    expect.objectContaining({ map, markers: [marker] })
+  );
 });
 
 test("실시간 버스 좌표를 별도 차량 마커로 표시한다", async () => {
