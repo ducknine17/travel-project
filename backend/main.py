@@ -1,5 +1,8 @@
 import datetime
 import os
+from pathlib import Path
+
+import dotenv
 import requests
 from fastapi import Depends, FastAPI, HTTPException, UploadFile, File, Query
 from fastapi.middleware.cors import CORSMiddleware
@@ -22,6 +25,7 @@ from bus_api import (
     get_response_items,
     get_seoul_bus_locations,
     get_seoul_bus_stations,
+    get_seoul_station_routes,
     get_service_key,
     is_seoul_coordinate,
 )
@@ -32,7 +36,7 @@ from place_filter import (
     search_places,
 )
 
-dotenv.load_dotenv("../.env")
+dotenv.load_dotenv(Path(__file__).resolve().parents[1] / ".env")
 
 app = FastAPI()
 
@@ -108,6 +112,60 @@ def get_bus_location(
         )
 
 
+@app.get("/bus-routes")
+def get_bus_routes(
+    city_code: str,
+    node_id: str,
+    ars_id: str = None,
+):
+    if city_code == "11":
+        if not ars_id:
+            raise HTTPException(status_code=400, detail="서울 정류장 ARS ID가 필요합니다.")
+        try:
+            return get_seoul_station_routes(ars_id)
+        except (requests.RequestException, RuntimeError, ValueError):
+            raise HTTPException(
+                status_code=502,
+                detail=(
+                    "서울 정류장별 노선 API 요청에 실패했습니다. "
+                    "서울 버스 정류소정보조회 서비스 활용 승인을 확인하세요."
+                ),
+            )
+
+    url = (
+        "https://apis.data.go.kr/1613000/BusRouteInfoInqireService/"
+        "getSttnThrghRouteList"
+    )
+    params = {
+        "serviceKey": get_service_key(),
+        "pageNo": 1,
+        "numOfRows": 100,
+        "_type": "json",
+        "cityCode": city_code,
+        "nodeId": node_id,
+    }
+
+    try:
+        response = requests.get(url, params=params, timeout=10)
+        response.raise_for_status()
+        return [
+            {
+                "routeId": item.get("routeid"),
+                "routeName": item.get("routeno"),
+                "routeType": item.get("routetp"),
+                "startName": item.get("startnodenm"),
+                "endName": item.get("endnodenm"),
+            }
+            for item in get_response_items(response.json())
+            if item.get("routeid") is not None
+        ]
+    except (requests.RequestException, RuntimeError, ValueError) as e:
+        raise HTTPException(
+            status_code=502,
+            detail=f"정류장별 노선 API 요청 실패: {str(e)}",
+        )
+
+
 @app.get("/bus-stations")
 def get_bus_stations(
     latitude: float,
@@ -158,6 +216,7 @@ def get_bus_stations(
                 "cityCode": station.get("citycode"),
                 "routes": [],
                 "arrivalSupported": True,
+                "locationSupported": True,
                 "source": "public-data",
             })
 

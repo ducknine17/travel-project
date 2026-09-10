@@ -6,6 +6,7 @@ jest.mock("../services/api", () => ({ get: jest.fn() }));
 
 jest.mock("../components/KakaoMap", () => function MockKakaoMap({
   stations,
+  buses,
   onMapMove,
   onStationClick,
 }) {
@@ -23,8 +24,59 @@ jest.mock("../components/KakaoMap", () => function MockKakaoMap({
           {station.name}
         </button>
       ))}
+      <span data-testid="bus-count">{buses.length}</span>
     </div>
   );
+});
+
+test("서울 정류장을 누르면 노선과 실시간 차량 위치를 지도에 전달한다", async () => {
+  api.get.mockImplementation((url) => {
+    if (url === "/places/filters") return Promise.resolve({ data: { groups: [] } });
+    if (url === "/places") return Promise.resolve({ data: { items: [] } });
+    if (url === "/bus-stations") {
+      return Promise.resolve({
+        data: [{
+          id: "101000227",
+          arsId: "02662",
+          name: "시청.덕수궁",
+          latitude: 37.566254,
+          longitude: 126.976921,
+          cityCode: "11",
+          arrivalSupported: false,
+          locationSupported: true,
+          source: "seoul-public-data",
+          routes: [],
+        }],
+      });
+    }
+    if (url === "/bus-routes") {
+      return Promise.resolve({
+        data: [{ routeId: "100100118", routeName: "701" }],
+      });
+    }
+    if (url === "/bus-location") {
+      return Promise.resolve({
+        data: [{
+          vehicleId: "111049708",
+          vehicleNumber: "서울74사4513",
+          latitude: "37.623453",
+          longitude: "126.916968",
+        }],
+      });
+    }
+    return Promise.reject(new Error(`unexpected request: ${url}`));
+  });
+
+  render(<MapPage />);
+  fireEvent.click(screen.getByRole("button", { name: "지도 이동" }));
+  fireEvent.click(await screen.findByRole("button", { name: "시청.덕수궁" }));
+
+  expect(await screen.findByRole("button", { name: "701" })).toBeInTheDocument();
+  expect(await screen.findByText(/운행 차량 1대를 표시했습니다/)).toBeInTheDocument();
+  expect(screen.getByTestId("bus-count")).toHaveTextContent("1");
+  expect(api.get).toHaveBeenCalledWith("/bus-location", {
+    params: { city_code: "11", route_id: "100100118" },
+  });
 });
 
 afterEach(() => {

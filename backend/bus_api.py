@@ -143,17 +143,21 @@ def get_seoul_bus_stations(latitude: float, longitude: float) -> list[dict]:
         if distance > NEARBY_STATION_RADIUS_KM:
             continue
 
-        station_id = item.get("NODE_ID") or item.get("STOPS_NO")
+        # STOPS_NO is Seoul's internal station ID. NODE_ID is the ARS number
+        # shown on the stop sign and used by the station-info API.
+        station_id = item.get("STOPS_NO") or item.get("NODE_ID")
         if not station_id:
             continue
         stations.append((distance, {
             "id": str(station_id),
+            "arsId": item.get("NODE_ID"),
             "name": item.get("STOPS_NM") or "버스 정류장",
             "latitude": station_latitude,
             "longitude": station_longitude,
-            "cityCode": None,
+            "cityCode": "11",
             "routes": [],
             "arrivalSupported": False,
+            "locationSupported": bool(item.get("NODE_ID")),
             "source": "seoul-public-data",
         }))
 
@@ -208,6 +212,37 @@ def get_seoul_bus_locations(route_id: str) -> list[dict]:
     ]
 
 
+def get_seoul_station_routes(ars_id: str) -> list[dict]:
+    """Return routes that pass a Seoul station identified by its ARS ID."""
+    response = requests.get(
+        f"{SEOUL_REALTIME_BUS_API_BASE_URL}/stationinfo/getRouteByStation",
+        params={
+            "serviceKey": get_service_key(),
+            "arsId": ars_id,
+            "resultType": "json",
+        },
+        timeout=10,
+    )
+    response.raise_for_status()
+
+    routes = []
+    seen_route_ids = set()
+    for item in _seoul_realtime_items(response.json()):
+        route_id = item.get("busRouteId")
+        if route_id is None or str(route_id) in seen_route_ids:
+            continue
+        seen_route_ids.add(str(route_id))
+        routes.append({
+            "routeId": str(route_id),
+            "routeName": item.get("busRouteNm"),
+            "routeType": item.get("routeType"),
+            "startName": item.get("stBegin"),
+            "endName": item.get("stEnd"),
+        })
+
+    return routes
+
+
 def get_osm_bus_stations(latitude: float, longitude: float) -> list[dict]:
     """Return nearby bus stops when the national public API is unavailable."""
     if not (-90 <= latitude <= 90 and -180 <= longitude <= 180):
@@ -258,6 +293,7 @@ def get_osm_bus_stations(latitude: float, longitude: float) -> list[dict]:
             "cityCode": None,
             "routes": [route for route in route_refs.split(";") if route],
             "arrivalSupported": False,
+            "locationSupported": False,
             "source": "openstreetmap",
         })
 

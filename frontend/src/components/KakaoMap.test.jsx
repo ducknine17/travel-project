@@ -136,3 +136,30 @@ test("여행지 핀을 누르면 장소 정보를 안전한 텍스트로 표시�
   const infoWindow = window.kakao.maps.InfoWindow.mock.results[0].value;
   expect(infoWindow.open).toHaveBeenCalledWith(map, marker);
 });
+
+test("실시간 버스 좌표를 별도 차량 마커로 표시한다", async () => {
+  const map = createKakaoMock();
+  Object.defineProperty(navigator, "geolocation", {
+    configurable: true,
+    value: {
+      getCurrentPosition: jest.fn((_success, error) => error()),
+    },
+  });
+
+  render(
+    <KakaoMap
+      buses={[{
+        vehicleId: "111049708",
+        vehicleNumber: "서울74사4513",
+        latitude: "37.623453",
+        longitude: "126.916968",
+      }]}
+    />
+  );
+
+  await waitFor(() => {
+    expect(window.kakao.maps.Marker).toHaveBeenCalledWith(
+      expect.objectContaining({ map, title: "서울74사4513", zIndex: 5 })
+    );
+  });
+});

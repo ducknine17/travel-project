@@ -11,10 +11,16 @@ function MapPage() {
   // 추가
   const [selectedStation, setSelectedStation] = useState(null);
   const [busArrivals, setBusArrivals] = useState([]);
+  const [busRoutes, setBusRoutes] = useState([]);
+  const [selectedRoute, setSelectedRoute] = useState(null);
+  const [buses, setBuses] = useState([]);
   const [stationsLoading, setStationsLoading] = useState(false);
   const [stationsError, setStationsError] = useState("");
   const [arrivalStatus, setArrivalStatus] = useState("idle");
+  const [routeStatus, setRouteStatus] = useState("idle");
+  const [locationStatus, setLocationStatus] = useState("idle");
   const stationRequestIdRef = useRef(0);
+  const routeRequestIdRef = useRef(0);
 
   useEffect(() => {
     api.get("/places/filters")
@@ -41,11 +47,17 @@ function MapPage() {
     console.log("🗺️ 지도 이동:", latitude, longitude);
     const requestId = stationRequestIdRef.current + 1;
     stationRequestIdRef.current = requestId;
+    routeRequestIdRef.current += 1;
     setStationsLoading(true);
     setStationsError("");
     setSelectedStation(null);
     setBusArrivals([]);
+    setBusRoutes([]);
+    setSelectedRoute(null);
+    setBuses([]);
     setArrivalStatus("idle");
+    setRouteStatus("idle");
+    setLocationStatus("idle");
 
     api.get("/bus-stations", {
       params: {
@@ -79,6 +91,38 @@ function MapPage() {
 
     setSelectedStation(station);
     setBusArrivals([]);
+    setBusRoutes([]);
+    setSelectedRoute(null);
+    setBuses([]);
+
+    const routeRequestId = routeRequestIdRef.current + 1;
+    routeRequestIdRef.current = routeRequestId;
+
+    if (station.locationSupported === false || !station.cityCode) {
+      setRouteStatus("unsupported");
+    } else {
+      setRouteStatus("loading");
+      api.get("/bus-routes", {
+        params: {
+          city_code: station.cityCode,
+          node_id: station.id,
+          ...(station.arsId ? { ars_id: station.arsId } : {}),
+        },
+      })
+        .then((response) => {
+          if (routeRequestIdRef.current !== routeRequestId) return;
+          const routes = response.data || [];
+          setBusRoutes(routes);
+          setRouteStatus(routes.length ? "ready" : "empty");
+          setSelectedRoute(routes[0] || null);
+        })
+        .catch((error) => {
+          if (routeRequestIdRef.current !== routeRequestId) return;
+          console.log("정류장 노선정보 불러오기 실패:", error);
+          setBusRoutes([]);
+          setRouteStatus("error");
+        });
+    }
 
     if (station.arrivalSupported === false || !station.cityCode) {
       setArrivalStatus("unsupported");
@@ -105,6 +149,49 @@ function MapPage() {
         setArrivalStatus("error");
       });
   }, []);
+
+  // 선택 노선의 차량 좌표를 즉시 조회하고 15초마다 갱신
+  useEffect(() => {
+    if (!selectedStation?.cityCode || !selectedRoute?.routeId) {
+      setBuses([]);
+      setLocationStatus("idle");
+      return undefined;
+    }
+
+    let active = true;
+    let hasLoaded = false;
+
+    const loadBusLocations = () => {
+      if (!hasLoaded) setLocationStatus("loading");
+      api.get("/bus-location", {
+        params: {
+          city_code: selectedStation.cityCode,
+          route_id: selectedRoute.routeId,
+        },
+      })
+        .then((response) => {
+          if (!active) return;
+          const nextBuses = response.data || [];
+          setBuses(nextBuses);
+          setLocationStatus(nextBuses.length ? "ready" : "empty");
+          hasLoaded = true;
+        })
+        .catch((error) => {
+          if (!active) return;
+          console.log("실시간 버스 위치 불러오기 실패:", error);
+          setLocationStatus("error");
+          hasLoaded = true;
+        });
+    };
+
+    loadBusLocations();
+    const intervalId = window.setInterval(loadBusLocations, 15000);
+
+    return () => {
+      active = false;
+      window.clearInterval(intervalId);
+    };
+  }, [selectedRoute, selectedStation]);
 
   const toggleFilter = (filterKey) => {
     setSelectedFilters((current) =>
@@ -142,6 +229,7 @@ function MapPage() {
       <KakaoMap
         places={places}
         stations={stations}
+        buses={buses}
         onMapMove={handleMapMove}
         onStationClick={handleStationClick}
       />
@@ -169,10 +257,48 @@ function MapPage() {
         >
           <h3>🚌 {selectedStation.name}</h3>
 
+          <div style={{ marginBottom: "12px" }}>
+            <strong>실시간 차량 위치</strong>
+            {routeStatus === "loading" ? (
+              <p>운행 노선을 불러오는 중입니다...</p>
+            ) : routeStatus === "unsupported" ? (
+              <p>이 정류장은 실시간 차량 위치를 지원하지 않습니다.</p>
+            ) : routeStatus === "error" ? (
+              <p role="alert">운행 노선을 불러오지 못했습니다.</p>
+            ) : routeStatus === "empty" ? (
+              <p>현재 확인 가능한 운행 노선이 없습니다.</p>
+            ) : busRoutes.length > 0 ? (
+              <>
+                <div style={{ marginTop: "8px" }}>
+                  {busRoutes.map((route) => (
+                    <button
+                      type="button"
+                      key={route.routeId}
+                      onClick={() => setSelectedRoute(route)}
+                      aria-pressed={selectedRoute?.routeId === route.routeId}
+                      style={{ margin: "0 6px 6px 0" }}
+                    >
+                      {route.routeName || route.routeId}
+                    </button>
+                  ))}
+                </div>
+                {locationStatus === "loading" ? (
+                  <p>차량 위치를 불러오는 중입니다...</p>
+                ) : locationStatus === "error" ? (
+                  <p role="alert">실시간 차량 위치를 불러오지 못했습니다.</p>
+                ) : locationStatus === "empty" ? (
+                  <p>현재 운행 중인 차량이 없습니다.</p>
+                ) : locationStatus === "ready" ? (
+                  <p>지도에 운행 차량 {buses.length}대를 표시했습니다. (15초마다 갱신)</p>
+                ) : null}
+              </>
+            ) : null}
+          </div>
+
           {arrivalStatus === "loading" ? (
             <p>도착 정보를 불러오는 중입니다...</p>
           ) : arrivalStatus === "unsupported" ? (
-            <p>이 보조 정류장은 위치만 제공되며 실시간 도착 정보는 지원하지 않습니다.</p>
+            <p>이 정류장은 실시간 도착 정보는 지원하지 않습니다.</p>
           ) : arrivalStatus === "error" ? (
             <p role="alert">버스 도착 정보를 불러오지 못했습니다.</p>
           ) : busArrivals.length === 0 ? (

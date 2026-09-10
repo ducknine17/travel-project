@@ -10,6 +10,7 @@ from bus_api import (
     get_response_items,
     get_seoul_bus_locations,
     get_seoul_bus_stations,
+    get_seoul_station_routes,
     get_seoul_service_key,
     get_service_key,
     is_seoul_coordinate,
@@ -83,6 +84,25 @@ class FakeSeoulBusLocationResponse:
         }
 
 
+class FakeSeoulStationRoutesResponse:
+    def raise_for_status(self):
+        pass
+
+    def json(self):
+        return {
+            "msgHeader": {"headerCd": "0", "headerMsg": "정상 처리"},
+            "msgBody": {
+                "itemList": [{
+                    "busRouteId": "100100118",
+                    "busRouteNm": "701",
+                    "routeType": "3",
+                    "stBegin": "진관공영차고지",
+                    "stEnd": "종로2가",
+                }]
+            },
+        }
+
+
 class BusApiTest(unittest.TestCase):
     def test_decodes_service_key_before_query_encoding(self):
         with patch.dict(os.environ, {"OPENAPI_KEY": "abc%2Fdef%2Bghi%3D%3D"}):
@@ -135,9 +155,11 @@ class BusApiTest(unittest.TestCase):
     def test_returns_seoul_bus_stations(self, get):
         stations = get_seoul_bus_stations(37.5665, 126.9780)
 
-        self.assertEqual(stations[0]["id"], "02128")
-        self.assertIsNone(stations[0]["cityCode"])
+        self.assertEqual(stations[0]["id"], "100000001")
+        self.assertEqual(stations[0]["arsId"], "02128")
+        self.assertEqual(stations[0]["cityCode"], "11")
         self.assertFalse(stations[0]["arrivalSupported"])
+        self.assertTrue(stations[0]["locationSupported"])
         self.assertEqual(stations[0]["source"], "seoul-public-data")
         self.assertIn(
             "/test-key/json/busStopLocationXyInfo/1/1000/",
@@ -159,6 +181,18 @@ class BusApiTest(unittest.TestCase):
             get.call_args.kwargs["params"]["busRouteId"],
             "100100118",
         )
+
+    @patch.dict(os.environ, {"OPENAPI_KEY": "test-key"})
+    @patch(
+        "bus_api.requests.get",
+        return_value=FakeSeoulStationRoutesResponse(),
+    )
+    def test_returns_routes_for_seoul_station(self, get):
+        routes = get_seoul_station_routes("02128")
+
+        self.assertEqual(routes[0]["routeId"], "100100118")
+        self.assertEqual(routes[0]["routeName"], "701")
+        self.assertEqual(get.call_args.kwargs["params"]["arsId"], "02128")
 
 
 if __name__ == "__main__":

@@ -58,12 +58,14 @@ const createInfoContent = (title, rows = []) => {
 function KakaoMap({
   places = [],
   stations = [],
+  buses = [],
   onMapMove,
   onStationClick,
 }) {
   const [map, setMap] = useState(null);
   const placeMarkersRef = useRef([]);
   const stationMarkersRef = useRef([]);
+  const busMarkersRef = useRef([]);
   const infoWindowRef = useRef(null);
   const lastReportedCenterRef = useRef("");
 
@@ -320,7 +322,10 @@ function KakaoMap({
             new window.kakao.maps.InfoWindow({
               content: createInfoContent(`🚌 ${station.name}`, [
                 station.routes?.length && `노선: ${station.routes.join(", ")}`,
-                station.arrivalSupported === false && "위치 정보만 제공",
+                station.locationSupported && "실시간 차량 위치 제공",
+                station.arrivalSupported === false &&
+                  !station.locationSupported &&
+                  "정류장 위치만 제공",
               ]),
               removable: true,
             });
@@ -339,6 +344,56 @@ function KakaoMap({
       stationMarkersRef.current.push(marker);
     });
   }, [map, stations, onStationClick]);
+
+  // 선택한 노선의 실시간 운행 차량 마커
+  useEffect(() => {
+    if (!map || !window.kakao?.maps) return;
+
+    busMarkersRef.current.forEach((marker) => marker.setMap(null));
+    busMarkersRef.current = [];
+
+    const liveBusIconSvg = `
+      <svg width="40" height="40" viewBox="0 0 40 40" xmlns="http://www.w3.org/2000/svg">
+        <circle cx="20" cy="20" r="18" fill="#ef4444" stroke="white" stroke-width="3" />
+        <text x="20" y="27" text-anchor="middle" font-size="20">🚌</text>
+      </svg>
+    `;
+    const liveBusIcon = new window.kakao.maps.MarkerImage(
+      "data:image/svg+xml;charset=UTF-8," + encodeURIComponent(liveBusIconSvg),
+      new window.kakao.maps.Size(40, 40),
+      { offset: new window.kakao.maps.Point(20, 20) }
+    );
+
+    buses.forEach((bus) => {
+      const latitude = Number(bus.latitude);
+      const longitude = Number(bus.longitude);
+      if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) return;
+
+      const marker = new window.kakao.maps.Marker({
+        map,
+        position: new window.kakao.maps.LatLng(latitude, longitude),
+        title: bus.vehicleNumber || "운행 중인 버스",
+        image: liveBusIcon,
+        zIndex: 5,
+      });
+
+      window.kakao.maps.event.addListener(marker, "click", () => {
+        if (infoWindowRef.current) infoWindowRef.current.close();
+        const infoWindow = new window.kakao.maps.InfoWindow({
+          content: createInfoContent("🚌 운행 중인 버스", [
+            bus.vehicleNumber && `차량번호: ${bus.vehicleNumber}`,
+            bus.nodeName && `인근 정류장: ${bus.nodeName}`,
+            bus.updatedAt && `갱신시각: ${bus.updatedAt}`,
+          ]),
+          removable: true,
+        });
+        infoWindow.open(map, marker);
+        infoWindowRef.current = infoWindow;
+      });
+
+      busMarkersRef.current.push(marker);
+    });
+  }, [map, buses]);
 
   return (
     <div

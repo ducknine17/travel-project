@@ -1,7 +1,7 @@
 import axios from "axios";
 
 const api = axios.create({
-    baseURL: "https://api.bef-trip.my",
+    baseURL: process.env.REACT_APP_API_BASE_URL || "https://api.bef-trip.my",
 });
 
 // 요청을 보내기 전에 JWT 자동 추가

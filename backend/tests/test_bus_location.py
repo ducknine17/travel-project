@@ -3,7 +3,7 @@ from unittest.mock import patch
 
 from fastapi import HTTPException
 
-from main import get_bus_location
+from main import get_bus_location, get_bus_routes
 
 
 class BusLocationTest(unittest.TestCase):
@@ -22,6 +22,17 @@ class BusLocationTest(unittest.TestCase):
 
         self.assertEqual(context.exception.status_code, 502)
         self.assertNotIn("serviceKey", context.exception.detail)
+
+    @patch("main.get_seoul_station_routes")
+    def test_uses_ars_id_to_get_routes_for_a_seoul_station(self, get_routes):
+        expected = [{"routeId": "100100118", "routeName": "701"}]
+        get_routes.return_value = expected
+
+        self.assertEqual(
+            get_bus_routes("11", "100000001", "02128"),
+            expected,
+        )
+        get_routes.assert_called_once_with("02128")
 
 
 if __name__ == "__main__":
