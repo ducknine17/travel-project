@@ -16,6 +16,27 @@ class BusStationsTest(unittest.TestCase):
         self.assertEqual(get_bus_stations(37.5, 127.0), expected)
         fallback.assert_called_once_with(37.5, 127.0)
 
+    @patch("main.get_osm_bus_stations")
+    @patch("main.get_seoul_bus_stations", return_value=[])
+    def test_uses_osm_when_seoul_api_returns_no_stations(self, _seoul, fallback):
+        expected = [{"id": "osm-456", "name": "서울 정류장"}]
+        fallback.return_value = expected
+
+        self.assertEqual(get_bus_stations(37.5665, 126.9780), expected)
+        fallback.assert_called_once_with(37.5665, 126.9780)
+
+    @patch("main.get_osm_bus_stations")
+    @patch("main.requests.get")
+    def test_uses_osm_when_tago_returns_no_stations(self, get, fallback):
+        get.return_value.json.return_value = {
+            "response": {"header": {"resultCode": "00"}, "body": {"items": ""}}
+        }
+        expected = [{"id": "osm-789", "name": "보조 정류장"}]
+        fallback.return_value = expected
+
+        self.assertEqual(get_bus_stations(35.1796, 129.0756), expected)
+        fallback.assert_called_once_with(35.1796, 129.0756)
+
 
 if __name__ == "__main__":
     unittest.main()

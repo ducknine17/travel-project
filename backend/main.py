@@ -17,7 +17,14 @@ import hashlib
 import bcrypt
 import time
 import shutil
-from bus_api import get_osm_bus_stations, get_response_items, get_service_key
+from bus_api import (
+    get_osm_bus_stations,
+    get_response_items,
+    get_seoul_bus_locations,
+    get_seoul_bus_stations,
+    get_service_key,
+    is_seoul_coordinate,
+)
 from place_filter import (
     ACCESSIBILITY_FILTER_GROUPS,
     AccessibilityFilter,
@@ -47,6 +54,18 @@ def get_bus_location(
     city_code: str,
     route_id: str
 ):
+    if city_code == "11":
+        try:
+            return get_seoul_bus_locations(route_id)
+        except (requests.RequestException, RuntimeError, ValueError):
+            raise HTTPException(
+                status_code=502,
+                detail=(
+                    "서울 실시간 버스 위치 API 요청에 실패했습니다. "
+                    "서울 버스위치정보조회 서비스 활용 승인을 확인하세요."
+                ),
+            )
+
     url = "https://apis.data.go.kr/1613000/BusLcInfoInqireService/getRouteAcctoBusLcList"
 
     params = {
@@ -94,6 +113,16 @@ def get_bus_stations(
     latitude: float,
     longitude: float
 ):
+    if is_seoul_coordinate(latitude, longitude):
+        try:
+            stations = get_seoul_bus_stations(latitude, longitude)
+            if stations:
+                return stations
+        except (requests.RequestException, RuntimeError, ValueError):
+            pass
+
+        return get_osm_bus_stations(latitude, longitude)
+
     url = "https://apis.data.go.kr/1613000/BusSttnInfoInqireService/getCrdntPrxmtSttnList"
 
     params = {
@@ -132,7 +161,10 @@ def get_bus_stations(
                 "source": "public-data",
             })
 
-        return stations
+        if stations:
+            return stations
+
+        return get_osm_bus_stations(latitude, longitude)
 
     except (requests.RequestException, ValueError) as e:
         try:

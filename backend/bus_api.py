@@ -1,10 +1,30 @@
 import os
+from functools import lru_cache
+from math import asin, cos, radians, sin, sqrt
 from urllib.parse import unquote
 
 import requests
 
 
-OVERPASS_URL = "https://overpass-api.de/api/interpreter"
+OVERPASS_URLS = (
+    "https://overpass-api.de/api/interpreter",
+    "https://overpass.kumi.systems/api/interpreter",
+)
+SEOUL_OPEN_DATA_BASE_URL = "http://openapi.seoul.go.kr:8088"
+SEOUL_STATION_SERVICE = "busStopLocationXyInfo"
+SEOUL_STATION_PAGE_SIZE = 1000
+SEOUL_REALTIME_BUS_API_BASE_URL = "http://ws.bus.go.kr/api/rest"
+NEARBY_STATION_RADIUS_KM = 1.5
+
+# A bounding box is sufficient for choosing the provider. If a point near the
+# city boundary is classified incorrectly, the empty-result fallback still
+# returns OSM stops.
+SEOUL_BOUNDS = {
+    "min_latitude": 37.413,
+    "max_latitude": 37.715,
+    "min_longitude": 126.734,
+    "max_longitude": 127.269,
+}
 
 
 def get_service_key() -> str:
@@ -12,6 +32,15 @@ def get_service_key() -> str:
     service_key = os.environ.get("OPENAPI_KEY")
     if not service_key:
         raise RuntimeError("OPENAPI_KEY environment variable is not set")
+
+    return unquote(service_key)
+
+
+def get_seoul_service_key() -> str:
+    """Return the key issued for the Seoul bus API."""
+    service_key = os.environ.get("SEOUL_KEY")
+    if not service_key:
+        raise RuntimeError("SEOUL_KEY environment variable is not set")
 
     return unquote(service_key)
 
@@ -32,6 +61,153 @@ def get_response_items(data: dict) -> list[dict]:
     return []
 
 
+def is_seoul_coordinate(latitude: float, longitude: float) -> bool:
+    """Return whether coordinates are inside Seoul's approximate bounds."""
+    return (
+        SEOUL_BOUNDS["min_latitude"] <= latitude <= SEOUL_BOUNDS["max_latitude"]
+        and SEOUL_BOUNDS["min_longitude"]
+        <= longitude
+        <= SEOUL_BOUNDS["max_longitude"]
+    )
+
+
+def _distance_km(
+    latitude_a: float,
+    longitude_a: float,
+    latitude_b: float,
+    longitude_b: float,
+) -> float:
+    """Return the great-circle distance between two WGS84 points."""
+    latitude_delta = radians(latitude_b - latitude_a)
+    longitude_delta = radians(longitude_b - longitude_a)
+    value = (
+        sin(latitude_delta / 2) ** 2
+        + cos(radians(latitude_a))
+        * cos(radians(latitude_b))
+        * sin(longitude_delta / 2) ** 2
+    )
+    return 6371 * 2 * asin(sqrt(value))
+
+
+@lru_cache(maxsize=2)
+def _load_seoul_bus_station_rows(service_key: str) -> tuple[dict, ...]:
+    """Load and cache Seoul's station-location dataset."""
+    rows = []
+    start = 1
+    total_count = None
+
+    while total_count is None or start <= total_count:
+        end = start + SEOUL_STATION_PAGE_SIZE - 1
+        response = requests.get(
+            (
+                f"{SEOUL_OPEN_DATA_BASE_URL}/{service_key}/json/"
+                f"{SEOUL_STATION_SERVICE}/{start}/{end}/"
+            ),
+            timeout=10,
+        )
+        response.raise_for_status()
+
+        data = response.json()
+        payload = data.get(SEOUL_STATION_SERVICE)
+        if not isinstance(payload, dict):
+            error = data.get("RESULT", {})
+            raise ValueError(error.get("MESSAGE") or "Seoul Open Data API error")
+
+        result = payload.get("RESULT", {})
+        if result.get("CODE") not in (None, "INFO-000"):
+            raise ValueError(result.get("MESSAGE") or "Seoul Open Data API error")
+
+        total_count = int(payload.get("list_total_count", 0))
+        rows.extend(payload.get("row") or [])
+        start = end + 1
+
+    return tuple(rows)
+
+
+def get_seoul_bus_stations(latitude: float, longitude: float) -> list[dict]:
+    """Return nearby stops from Seoul's cached station-location dataset."""
+    stations = []
+    for item in _load_seoul_bus_station_rows(get_seoul_service_key()):
+        try:
+            station_latitude = float(item["YCRD"])
+            station_longitude = float(item["XCRD"])
+        except (KeyError, TypeError, ValueError):
+            continue
+
+        distance = _distance_km(
+            latitude,
+            longitude,
+            station_latitude,
+            station_longitude,
+        )
+        if distance > NEARBY_STATION_RADIUS_KM:
+            continue
+
+        station_id = item.get("NODE_ID") or item.get("STOPS_NO")
+        if not station_id:
+            continue
+        stations.append((distance, {
+            "id": str(station_id),
+            "name": item.get("STOPS_NM") or "버스 정류장",
+            "latitude": station_latitude,
+            "longitude": station_longitude,
+            "cityCode": None,
+            "routes": [],
+            "arrivalSupported": False,
+            "source": "seoul-public-data",
+        }))
+
+    stations.sort(key=lambda station: station[0])
+    return [station for _, station in stations[:100]]
+
+
+def _seoul_realtime_items(data: dict) -> list[dict]:
+    """Normalize items returned by Seoul's real-time bus API."""
+    header = data.get("msgHeader", {})
+    header_code = str(header.get("headerCd", "0"))
+    if header_code not in {"0", "00"}:
+        raise ValueError(header.get("headerMsg") or "Seoul bus API error")
+
+    items = data.get("msgBody", {}).get("itemList", [])
+    if isinstance(items, dict):
+        return [items]
+    return items if isinstance(items, list) else []
+
+
+def get_seoul_bus_locations(route_id: str) -> list[dict]:
+    """Return real-time vehicle positions for a Seoul bus route."""
+    response = requests.get(
+        f"{SEOUL_REALTIME_BUS_API_BASE_URL}/buspos/getBusPosByRtid",
+        params={
+            # This service uses the public/shared-data service key, not the
+            # Seoul Open Data key used by busStopLocationXyInfo.
+            "serviceKey": get_service_key(),
+            "busRouteId": route_id,
+            "resultType": "json",
+        },
+        timeout=10,
+    )
+    response.raise_for_status()
+
+    return [
+        {
+            "routeName": None,
+            "latitude": item.get("gpsY"),
+            "longitude": item.get("gpsX"),
+            "nodeOrder": item.get("sectOrd"),
+            "nodeName": None,
+            "nodeId": item.get("nextStId"),
+            "routeType": item.get("busType"),
+            "vehicleNumber": item.get("plainNo"),
+            "vehicleId": item.get("vehId"),
+            "updatedAt": item.get("dataTm"),
+            "source": "seoul-public-data",
+        }
+        for item in _seoul_realtime_items(response.json())
+        if item.get("gpsX") is not None and item.get("gpsY") is not None
+    ]
+
+
 def get_osm_bus_stations(latitude: float, longitude: float) -> list[dict]:
     """Return nearby bus stops when the national public API is unavailable."""
     if not (-90 <= latitude <= 90 and -180 <= longitude <= 180):
@@ -45,13 +221,24 @@ def get_osm_bus_stations(latitude: float, longitude: float) -> list[dict]:
     );
     out body 100;
     """
-    response = requests.get(
-        OVERPASS_URL,
-        params={"data": query},
-        headers={"User-Agent": "BEF-Trip/1.0 bus-stop fallback"},
-        timeout=15,
-    )
-    response.raise_for_status()
+    last_error = None
+    for url in OVERPASS_URLS:
+        try:
+            # POST avoids proxy failures caused by the long encoded query URL.
+            response = requests.post(
+                url,
+                data={"data": query},
+                headers={"User-Agent": "BEF-Trip/1.0 bus-stop fallback"},
+                timeout=15,
+            )
+            response.raise_for_status()
+            break
+        except requests.RequestException as exc:
+            last_error = exc
+    else:
+        raise last_error or requests.RequestException(
+            "No Overpass endpoint is available"
+        )
 
     stations = []
     for element in response.json().get("elements", []):
