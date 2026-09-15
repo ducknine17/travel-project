@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import KakaoMap, { BUS_STATION_MAX_LEVEL } from "../components/KakaoMap";
+import KakaoMap from "../components/KakaoMap";
 import api from "../services/api";
 import { Icon, Mascot, PageHeading } from "../components/Brand";
 

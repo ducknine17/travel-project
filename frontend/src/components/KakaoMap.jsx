@@ -1,5 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 
+export const BUS_STATION_MAX_LEVEL = 5;
+
 function KakaoMap({
   places = [],
   stations = [],
@@ -8,6 +10,7 @@ function KakaoMap({
   onStatus,
 }) {
   const [ready, setReady] = useState(false);
+  const [mapLevel, setMapLevel] = useState(10);
   const mapRef = useRef(null);
   const placeMarkersRef = useRef([]);
   const stationMarkersRef = useRef([]);
@@ -35,6 +38,7 @@ function KakaoMap({
       const map = new window.kakao.maps.Map(container, options);
 
       mapRef.current = map;
+      setMapLevel(map.getLevel());
       clearTimeout(timer);
       setReady(true);
       onStatus?.("ready");
@@ -58,6 +62,7 @@ function KakaoMap({
       // 지도 이동/확대축소가 끝났을 때
       window.kakao.maps.event.addListener(map, "idle", () => {
         const center = map.getCenter();
+        setMapLevel(map.getLevel());
 
         const latitude = center.getLat();
         const longitude = center.getLng();
@@ -250,7 +255,7 @@ function KakaoMap({
 
       stationMarkersRef.current.push(marker);
     });
-  }, [stations, onStationClick, ready]);
+  }, [stations, onStationClick, ready, mapLevel]);
 
   return (
     <div
