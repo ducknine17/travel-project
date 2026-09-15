@@ -113,17 +113,19 @@ def verify_access_token(token: str) -> dict:
     return payload
 
 
-def verify_password_change_token(token: str, uid: str) -> str:
+def verify_password_change_token(token: str) -> tuple[str, str]:
     payload = _verify_token(token)
+    uid = payload.get("sub")
     verification_id = payload.get("jti")
     if (
         payload.get("type") != "password_change"
-        or payload.get("sub") != uid
+        or not isinstance(uid, str)
+        or not uid
         or not isinstance(verification_id, str)
         or not verification_id.startswith("password-change-")
     ):
         raise HTTPException(status_code=403, detail="email verification failed")
-    return verification_id
+    return uid, verification_id
 
 
 def get_current_user_id(

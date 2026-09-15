@@ -1,5 +1,5 @@
 from pydantic import BaseModel, Field
-from typing import Optional
+from typing import Literal, Optional
 
 class Post(BaseModel):
     title: str
@@ -34,6 +34,10 @@ class EmailRequest(BaseModel):
 class UserEdit(BaseModel):
     password: str = Field(min_length=8, max_length=128)
     verification_token: str
+
+
+class CharacterUpdate(BaseModel):
+    character: Literal[0, 1, 2, 3]
 
 
 class PlaceSummary(BaseModel):

@@ -63,9 +63,12 @@ def send_password_change_link(uid, address):
         "본인이 요청하지 않았다면 이 메일을 무시하세요.<br>BEF 팀 드림"
     )
     con = db.connect()
-    db.executeQuery(
-        con,
-        'INSERT INTO "user".validate (id, uid, is_used) VALUES (%s, %s, %s)',
-        (verification_id, uid, False),
-    )
+    try:
+        db.executeQuery(
+            con,
+            'INSERT INTO "user".validate (id, uid, is_used) VALUES (%s, %s, %s)',
+            (verification_id, uid, False),
+        )
+    finally:
+        con.close()
     send_email(subject, content, address)

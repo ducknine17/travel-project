@@ -148,11 +148,14 @@ function KakaoMap({
 
     stationMarkersRef.current = [];
 
-    // 정류장 목록이 바뀌면 기존 정보창도 닫기
+    // 정류장 목록이나 줌 상태가 바뀌면 열려 있던 정보창도 닫기
     if (infoWindowRef.current) {
       infoWindowRef.current.close();
       infoWindowRef.current = null;
     }
+
+    // 카카오맵은 level 숫자가 작을수록 더 확대된 상태다.
+    if (mapLevel > BUS_STATION_MAX_LEVEL) return;
 
     // 버스 정류장 전용 아이콘
     const busIconSvg = `

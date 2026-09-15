@@ -558,13 +558,16 @@ def register(user: UserRegister):
 @app.post("/password-change/send-email")
 def send_password_change_email(uid: str = Depends(get_current_user_id)):
     con = db.connect()
-    result = db.executeQuery(
-        con,
-        'SELECT email FROM "user".user WHERE uid = %s',
-        (uid,),
-    )
-    if not result:
-        raise HTTPException(404, "user not found")
+    try:
+        result = db.executeQuery(
+            con,
+            'SELECT email FROM "user".user WHERE uid = %s',
+            (uid,),
+        )
+        if not result:
+            raise HTTPException(404, "user not found")
+    finally:
+        con.close()
 
     send_password_change_link(uid, result[0][0])
     return {
@@ -574,8 +577,8 @@ def send_password_change_email(uid: str = Depends(get_current_user_id)):
 
 @app.put("/edit-user", include_in_schema=False)
 @app.put("/password-change")
-def edit_user(user: UserEdit, uid: str = Depends(get_current_user_id)):
-    verification_id = verify_password_change_token(user.verification_token, uid)
+def edit_user(user: UserEdit):
+    uid, verification_id = verify_password_change_token(user.verification_token)
     con = db.connect()
     password_hashed = bcrypt.hashpw(
         user.password.encode("utf-8"),
@@ -620,6 +623,27 @@ def edit_user(user: UserEdit, uid: str = Depends(get_current_user_id)):
     }
 
 
+@app.get("/password-change/verify")
+def verify_password_change_email(token: str = Query(min_length=1)):
+    uid, verification_id = verify_password_change_token(token)
+    con = db.connect()
+    try:
+        result = db.executeQuery(
+            con,
+            '''
+            SELECT 1
+            FROM "user".validate
+            WHERE id = %s AND uid = %s AND is_used = false
+            ''',
+            (verification_id, uid),
+        )
+        if not result:
+            raise HTTPException(403, "email verification failed")
+        return {"verified": True}
+    finally:
+        con.close()
+
+
 @app.post("/send-email")
 def send_email_link(req: EmailRequest):
     con = db.connect()
@@ -658,17 +682,48 @@ def login(user: UserLogin):
 @app.get("/me")
 def me(uid: str = Depends(get_current_user_id)):
     con = db.connect()
+    try:
+        query = '''
+            SELECT uid, id, COALESCE(character, 0)
+            FROM "user".user
+            WHERE uid = %s
+        '''
+        result = db.executeQuery(con, query, (uid,))
 
-    query = 'SELECT uid, id FROM "user".user WHERE uid = %s'
-    result = db.executeQuery(con, query, (uid,))
+        if not result:
+            raise HTTPException(status_code=404, detail="User not found")
 
-    if not result:
-        raise HTTPException(status_code=404, detail="User not found")
+        return {
+            "uid": result[0][0],
+            "username": result[0][1],
+            "character": result[0][2],
+        }
+    finally:
+        con.close()
 
-    return {
-        "uid": result[0][0],
-        "username": result[0][1],
-    }
+
+@app.put("/me/character")
+def update_character(
+    request: CharacterUpdate,
+    uid: str = Depends(get_current_user_id),
+):
+    con = db.connect()
+    cur = con.cursor()
+    try:
+        cur.execute(
+            'UPDATE "user".user SET character = %s WHERE uid = %s',
+            (request.character, uid),
+        )
+        if cur.rowcount != 1:
+            raise HTTPException(status_code=404, detail="User not found")
+        con.commit()
+        return {"character": request.character}
+    except Exception:
+        con.rollback()
+        raise
+    finally:
+        cur.close()
+        con.close()
 
 @app.get("/validate/{id}")
 def validate(id):

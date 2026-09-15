@@ -1,4 +1,4 @@
-import { render, waitFor } from "@testing-library/react";
+import { act, render, waitFor } from "@testing-library/react";
 import KakaoMap from "./KakaoMap";
 
 class LatLng {
@@ -18,10 +18,13 @@ class LatLng {
 
 const createKakaoMock = () => {
   const defaultCenter = new LatLng(36.3, 127.3);
+  let level = 10;
   const map = {
     getCenter: jest.fn(() => defaultCenter),
+    getLevel: jest.fn(() => level),
     setCenter: jest.fn(),
-    setLevel: jest.fn(),
+    setLevel: jest.fn((nextLevel) => { level = nextLevel; }),
+    setTestLevel: (nextLevel) => { level = nextLevel; },
   };
   const Marker = jest.fn((options) => ({
     options,
@@ -148,12 +151,55 @@ test("여행지 핀을 누르면 장소 정보를 안전한 텍스트로 표시�
   );
 });
 
-test("실시간 버스 좌표를 별도 차량 마커로 표시한다", async () => {
+test("버스 정류장은 지도 레벨 5 이하로 확대했을 때만 표시한다", async () => {
   const map = createKakaoMock();
   Object.defineProperty(navigator, "geolocation", {
     configurable: true,
     value: {
       getCurrentPosition: jest.fn((_success, error) => error()),
+    },
+  });
+
+  render(
+    <KakaoMap
+      stations={[{
+        id: "station-1",
+        name: "시청 정류장",
+        latitude: 37.5662,
+        longitude: 126.9779,
+      }]}
+    />
+  );
+
+  await waitFor(() => expect(map.getLevel).toHaveBeenCalled());
+  expect(window.kakao.maps.Marker).not.toHaveBeenCalled();
+
+  map.setTestLevel(5);
+  const idleListener = window.kakao.maps.event.addListener.mock.calls.find(
+    ([target, eventName]) => target === map && eventName === "idle"
+  );
+  act(() => idleListener[2]());
+
+  await waitFor(() => {
+    expect(window.kakao.maps.Marker).toHaveBeenCalledWith(
+      expect.objectContaining({ map, title: "시청 정류장" })
+    );
+  });
+
+  map.setTestLevel(6);
+  act(() => idleListener[2]());
+  const stationMarker = window.kakao.maps.Marker.mock.results[0].value;
+  await waitFor(() => expect(stationMarker.setMap).toHaveBeenCalledWith(null));
+});
+
+test("실시간 버스 좌표를 별도 차량 마커로 표시한다", async () => {
+  const map = createKakaoMock();
+  Object.defineProperty(navigator, "geolocation", {
+    configurable: true,
+    value: {
+      getCurrentPosition: jest.fn((success) => success({
+        coords: { latitude: 37.5665, longitude: 126.978 },
+      })),
     },
   });
 
