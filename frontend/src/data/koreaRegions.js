@@ -10,13 +10,13 @@ export const KOREA_REGIONS = [
 ];
 
 export const findRegionByPlace = (placeName = "") => {
-  const normalized = placeName.toLocaleLowerCase("ko-KR");
+  const normalized = String(placeName || "").toLocaleLowerCase("ko-KR");
 
   return (
     KOREA_REGIONS.find((region) =>
       region.aliases.some((alias) =>
         normalized.includes(alias.toLocaleLowerCase("ko-KR"))
       )
-    ) || KOREA_REGIONS[1]
+    ) || null
   );
 };

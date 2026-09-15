@@ -1,189 +1,47 @@
 import { Link, useLocation, useNavigate } from "react-router-dom";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import api from "../services/api";
+import { Icon, Logo } from "./Brand";
+import { notifyLikes } from "../hooks/useLikes";
 
-function Header() {
-  const navigate = useNavigate();
-  const location = useLocation();
-
-  const [authStatus, setAuthStatus] = useState(
-    localStorage.getItem("token") ? "checking" : "unauthenticated"
-  );
+export default function Header() {
+  const navigate = useNavigate(), location = useLocation();
+  const [authStatus, setAuthStatus] = useState(localStorage.getItem("token") ? "checking" : "unauthenticated");
   const [username, setUsername] = useState("");
-
   const [showMenu, setShowMenu] = useState(false);
-
+  const menu = useRef(null);
   useEffect(() => {
-    const token = localStorage.getItem("token");
-
-    if (!token) {
-      setAuthStatus("unauthenticated");
-      setUsername("");
-      return;
-    }
-
-    let isCancelled = false;
-    setAuthStatus("checking");
-
-    const loadMe = async () => {
-      try {
-        const res = await api.get("/me");
-        if (isCancelled) return;
-
-        setUsername(res.data.username);
-        setAuthStatus("authenticated");
-      } catch (err) {
-        if (isCancelled) return;
-
-        console.error(err);
-        if (err.response?.status === 401) {
-          localStorage.removeItem("token");
-        }
-        setUsername("");
-        setShowMenu(false);
-        setAuthStatus("unauthenticated");
-      }
-    };
-
-    loadMe();
-
-    return () => {
-      isCancelled = true;
-    };
-  }, [location.pathname]);
-
-  const isLogin = authStatus === "authenticated";
-
-  const logout = () => {
-    localStorage.removeItem("token");
-    setUsername("");
     setShowMenu(false);
-    setAuthStatus("unauthenticated");
-
-    navigate("/");
-  };
-
-  return (
-    <header
-      style={{
-        display: "flex",
-        gap: "30px",
-        padding: "20px",
-        borderBottom: "1px solid #ddd",
-      }}
-    >
-      <Link to="/">둘러보기</Link>
-
-      <span
-        style={{ cursor: "pointer", color: "#551A8B" }}
-        onClick={() => {
-          if (!isLogin) {
-            alert("로그인이 필요한 서비스입니다.");
-            navigate("/login");
-            return;
-          }
-          navigate("/write");
-        }}
-      >
-        글쓰기
-      </span>
-
-      <Link to="/map">지도</Link>
-
-      <div
-        style={{
-          marginLeft: "auto",
-          display: "flex",
-          gap: "20px",
-          alignItems: "center",
-        }}
-      >
-        {authStatus === "unauthenticated" ? (
-          <>
-            <Link to="/login">로그인</Link>
-            <Link to="/register">회원가입</Link>
-          </>
-        ) : authStatus === "authenticated" ? (
-          <>
-            <div style={{ position: "relative" }}>
-              <span
-                onClick={() => setShowMenu(!showMenu)}
-                style={{
-                  cursor: "pointer",
-                  fontWeight: "bold",
-                  userSelect: "none",
-                }}
-              >
-                {username} ▼
-              </span>
-
-              {showMenu && (
-                <div
-                  style={{
-                    position: "absolute",
-                    top: "100%",
-                    marginTop: "8px",
-                    right: 0,
-                    background: "white",
-                    border: "1px solid #ddd",
-                    borderRadius: "8px",
-                    boxShadow: "0 4px 10px rgba(0,0,0,0.15)",
-                    minWidth: "150px",
-                    zIndex: 100,
-                  }}
-                  >
-                    <div
-                      onClick={() => navigate("/mypage")}
-                      style={{
-                          padding: "12px 16px",
-                          cursor: "pointer",
-                          transition: "0.2s",
-                      }}
-                      onMouseEnter={(e) =>
-                        (e.target.style.background = "#f5f5f5")
-                      }
-                      onMouseLeave={(e) =>
-                        (e.target.style.background = "white")
-                      }
-                    >
-                      마이페이지
-                    </div>
-                  <div
-                    onClick={() => navigate("/profile/edit")}
-                    style={{
-                        padding: "12px 16px",
-                        cursor: "pointer",
-                        transition: "0.2s",
-                    }}
-                    onMouseEnter={(e) =>
-                      (e.target.style.background = "#f5f5f5")
-                    }
-                    onMouseLeave={(e) =>
-                      (e.target.style.background = "white")
-                    }
-                  >
-                    개인정보 수정
-                  </div>
-                </div>
-              )}
-            </div>
-
-            <button
-              onClick={logout}
-              style={{
-                border: "none",
-                background: "none",
-                cursor: "pointer",
-                fontSize: "16px",
-              }}
-            >
-              로그아웃
-            </button>
-          </>
-        ) : null}
+    if (!localStorage.getItem("token")) { setAuthStatus("unauthenticated"); setUsername(""); return; }
+    let cancelled = false;
+    setAuthStatus("checking");
+    api.get("/me").then(res => {
+      if (!cancelled) { setUsername(res.data.username); setAuthStatus("authenticated"); }
+    }).catch(err => {
+      if (cancelled) return;
+      if (err.response?.status === 401) localStorage.removeItem("token");
+      setUsername(""); setAuthStatus("unauthenticated");
+    });
+    return () => { cancelled = true; };
+  }, [location.pathname]);
+  useEffect(() => {
+    const dismiss = e => { if (!menu.current?.contains(e.target)) setShowMenu(false); };
+    const escape = e => { if (e.key === "Escape") setShowMenu(false); };
+    document.addEventListener("mousedown", dismiss); document.addEventListener("keydown", escape);
+    return () => { document.removeEventListener("mousedown", dismiss); document.removeEventListener("keydown", escape); };
+  }, []);
+  const logout = () => { localStorage.removeItem("token"); setAuthStatus("unauthenticated"); setUsername(""); setShowMenu(false); notifyLikes(); navigate("/"); };
+  const bagPage = location.pathname === "/mypage";
+  return <header className={`site-header ${bagPage ? "bag-header" : ""}`}><div className="header-inner"><Logo/>
+    {bagPage ? <Link className="bag-close" to="/">닫기 <Icon name="close"/></Link> : <>
+      <nav className="main-nav" aria-label="주 메뉴">
+        <Link to="/" aria-current={location.pathname === "/" ? "page" : undefined}>둘러보기</Link>
+        <Link to={authStatus === "authenticated" ? "/write" : "/login"} aria-current={location.pathname === "/write" || location.pathname.startsWith("/edit/") ? "page" : undefined}>글쓰기</Link>
+        <Link to="/map" aria-current={location.pathname === "/map" ? "page" : undefined}>지도</Link>
+      </nav>
+      <div className="header-account">
+        {authStatus === "authenticated" ? <><div className="account-dropdown" ref={menu}><button className="text-button" aria-expanded={showMenu} onClick={() => setShowMenu(!showMenu)}>{username} ▼</button>{showMenu && <div className="account-menu"><Link to="/mypage"><Icon name="bag" size={18}/>내 가방</Link><Link to="/profile/edit"><Icon name="user" size={18}/>개인정보 수정</Link></div>}</div><span className="header-divider"/><button className="text-button logout" onClick={logout}>로그아웃</button></> : authStatus === "unauthenticated" ? <><Link to="/login">로그인</Link><Link className="join-link" to="/register">함께 시작하기</Link></> : <span className="muted">가방 챙기는 중…</span>}
       </div>
-    </header>
-  );
+    </>}
+  </div></header>;
 }
-
-export default Header;

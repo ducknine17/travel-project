@@ -19,6 +19,8 @@
   },
   "scripts": {
     "start": "react-scripts start",
+    "start:preview": "node scripts/start-preview.cjs",
+    "build:local": "react-scripts build",
     "build": "react-scripts build && sudo cp -r build/* /var/www/bef",
     "test": "react-scripts test",
     "eject": "react-scripts eject"
