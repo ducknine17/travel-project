@@ -22,6 +22,21 @@ export const ITEMS = [
 ];
 
 export const CHARACTERS = [{ id: "retriever", name: "리트리버", description: "다정한 발걸음" }, { id: "poodle", name: "푸들", description: "호기심 가득한 친구" }, { id: "shiba", name: "시바견", description: "씩씩한 모험 친구" }, { id: "dachshund", name: "닥스훈트", description: "느긋한 산책 친구" }];
+export const CHARACTER_IDS = CHARACTERS.map(character => character.id);
+
+const ACTIVE_CHARACTER_KEY = "bef_active_character";
+export const normalizeCharacter = (value, fallback = "retriever") => {
+  if (Number.isInteger(value) && CHARACTER_IDS[value]) return CHARACTER_IDS[value];
+  return CHARACTER_IDS.includes(value) ? value : fallback;
+};
+export const getCharacterIndex = character => Math.max(0, CHARACTER_IDS.indexOf(normalizeCharacter(character)));
+export const readActiveCharacter = () => normalizeCharacter(localStorage.getItem(ACTIVE_CHARACTER_KEY));
+export const setActiveCharacter = character => {
+  const normalized = normalizeCharacter(character);
+  localStorage.setItem(ACTIVE_CHARACTER_KEY, normalized);
+  window.dispatchEvent(new CustomEvent("bef-character-change", { detail: normalized }));
+  return normalized;
+};
 
 export function getCollection(posts = [], places = []) {
   const dated = posts.filter(p => p.written_date && !Number.isNaN(new Date(p.written_date).getTime()));
@@ -34,6 +49,6 @@ export function getCollection(posts = [], places = []) {
 }
 
 export function readBagSettings(username) {
-  try { const value = JSON.parse(localStorage.getItem(`bef_bag:${username}`)); return { character: CHARACTERS.some(c => c.id === value?.character) ? value.character : "retriever", badges: Array.isArray(value?.badges) ? value.badges : [], items: Array.isArray(value?.items) ? value.items : [] }; }
+  try { const value = JSON.parse(localStorage.getItem(`bef_bag:${username}`)); return { character: normalizeCharacter(value?.character), badges: Array.isArray(value?.badges) ? value.badges : [], items: Array.isArray(value?.items) ? value.items : [] }; }
   catch { return { character: "retriever", badges: [], items: [] }; }
 }

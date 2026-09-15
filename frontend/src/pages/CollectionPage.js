@@ -15,9 +15,10 @@ export default function CollectionPage({ decorate = false }) {
   const [notice, setNotice] = useState("");
   const { badges, items, settings, username, loading, error } = bag;
   const selected = badges.find(b => b.id === selectedId);
-  const save = next => {
+  const save = async next => {
     if (!username) { setNotice("로그인하면 나만의 가방을 꾸밀 수 있어요."); return; }
-    if (bag.saveSettings(next)) setNotice("내 가방에 저장했어요.");
+    if (await bag.saveSettings(next)) setNotice("내 가방에 저장했어요.");
+    else setNotice("가방 설정을 저장하지 못했어요. 다시 시도해주세요.");
   };
   const toggle = (type,id) => {
     const current = settings[type], max = type === "badges" ? 5 : 3;

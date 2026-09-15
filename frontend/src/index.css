@@ -57,8 +57,10 @@ img { max-width:100%; }
 .mascot-read { background-position:right top; }
 .mascot-write { background-position:left bottom; }
 .mascot-badge { background-position:right bottom; }
-.mascot-friend { background-image:url('../public/assets/bf/friends.png'); background-size:430% auto; background-position-y:53%; }
-.friend-poodle { background-position-x:33%; }.friend-shiba { background-position-x:67%; }.friend-dachshund { background-position-x:100%; }
+.mascot-friend { background-size:200% 200%; }
+.friend-poodle { background-image:url('../public/assets/bf/mascot-poodle-sprite.png'); }
+.friend-shiba { background-image:url('../public/assets/bf/mascot-shiba-sprite.png'); }
+.friend-dachshund { background-image:url('../public/assets/bf/mascot-dachshund-sprite.png'); }
 .bag-link { display:flex; align-items:center; gap:8px; align-self:flex-end; margin-bottom:-29px; }
 .bag-link .mascot { width:140px; transition:transform .25s ease; }
 .bag-link:hover .mascot { transform:translateY(-6px) rotate(-3deg); }

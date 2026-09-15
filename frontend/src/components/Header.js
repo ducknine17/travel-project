@@ -3,6 +3,7 @@ import { useState, useEffect, useRef } from "react";
 import api from "../services/api";
 import { Icon, Logo } from "./Brand";
 import { notifyLikes } from "../hooks/useLikes";
+import { normalizeCharacter, setActiveCharacter } from "../data/collection";
 
 export default function Header() {
   const navigate = useNavigate(), location = useLocation();
@@ -12,15 +13,15 @@ export default function Header() {
   const menu = useRef(null);
   useEffect(() => {
     setShowMenu(false);
-    if (!localStorage.getItem("token")) { setAuthStatus("unauthenticated"); setUsername(""); return; }
+    if (!localStorage.getItem("token")) { setAuthStatus("unauthenticated"); setUsername(""); setActiveCharacter("retriever"); return; }
     let cancelled = false;
     setAuthStatus("checking");
     api.get("/me").then(res => {
-      if (!cancelled) { setUsername(res.data.username); setAuthStatus("authenticated"); }
+      if (!cancelled) { setUsername(res.data.username); setActiveCharacter(normalizeCharacter(res.data.character)); setAuthStatus("authenticated"); }
     }).catch(err => {
       if (cancelled) return;
       if (err.response?.status === 401) localStorage.removeItem("token");
-      setUsername(""); setAuthStatus("unauthenticated");
+      setUsername(""); setActiveCharacter("retriever"); setAuthStatus("unauthenticated");
     });
     return () => { cancelled = true; };
   }, [location.pathname]);
@@ -30,7 +31,7 @@ export default function Header() {
     document.addEventListener("mousedown", dismiss); document.addEventListener("keydown", escape);
     return () => { document.removeEventListener("mousedown", dismiss); document.removeEventListener("keydown", escape); };
   }, []);
-  const logout = () => { localStorage.removeItem("token"); setAuthStatus("unauthenticated"); setUsername(""); setShowMenu(false); notifyLikes(); navigate("/"); };
+  const logout = () => { localStorage.removeItem("token"); setActiveCharacter("retriever"); setAuthStatus("unauthenticated"); setUsername(""); setShowMenu(false); notifyLikes(); navigate("/"); };
   const bagPage = location.pathname === "/mypage";
   return <header className={`site-header ${bagPage ? "bag-header" : ""}`}><div className="header-inner"><Logo/>
     {bagPage ? <Link className="bag-close" to="/">닫기 <Icon name="close"/></Link> : <>

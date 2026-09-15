@@ -1,4 +1,6 @@
+import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
+import { normalizeCharacter, readActiveCharacter } from "../data/collection";
 
 export function Icon({ name = "paw", size = 22, ...props }) {
   const paths = {
@@ -33,8 +35,15 @@ export function Logo() {
   return <Link className="brand-logo" to="/" aria-label="BF 베프 홈"><span className="brand-mark"><Icon size={24}/></span><strong>F</strong><span>베프</span><small>함께, 한 걸음</small></Link>;
 }
 
-export function Mascot({ pose = "bag", className = "", character = "retriever" }) {
-  return <span aria-hidden="true" className={`mascot mascot-${pose} ${character !== "retriever" ? `mascot-friend friend-${character}` : ""} ${className}`} />;
+export function Mascot({ pose = "bag", className = "", character }) {
+  const [activeCharacter, setActiveCharacter] = useState(readActiveCharacter);
+  useEffect(() => {
+    const updateCharacter = event => setActiveCharacter(normalizeCharacter(event.detail));
+    window.addEventListener("bef-character-change", updateCharacter);
+    return () => window.removeEventListener("bef-character-change", updateCharacter);
+  }, []);
+  const displayedCharacter = normalizeCharacter(character ?? activeCharacter);
+  return <span aria-hidden="true" className={`mascot mascot-${pose} ${displayedCharacter !== "retriever" ? `mascot-friend friend-${displayedCharacter}` : ""} ${className}`} />;
 }
 
 export function BagLink() {
