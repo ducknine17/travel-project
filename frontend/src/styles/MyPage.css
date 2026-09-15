@@ -27,6 +27,37 @@
   color: #52625a;
 }
 
+.mypage-profile-summary {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+}
+
+.mypage-profile-avatar {
+  display: grid;
+  flex: 0 0 96px;
+  width: 96px;
+  height: 96px;
+  place-items: center;
+  overflow: hidden;
+  border: 1px solid #dce8df;
+  border-radius: 50%;
+  background: #f1f7f3;
+}
+
+.mypage-profile-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.mypage-character-name {
+  display: block;
+  margin-top: 9px;
+  color: #3d7a5d;
+  font-weight: 700;
+}
+
 .eyebrow {
   margin: 0 0 8px;
   font-size: 12px;

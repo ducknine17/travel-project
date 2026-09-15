@@ -36,6 +36,11 @@ class UserEdit(BaseModel):
     verification_token: str
 
 
+class UserProfileEdit(BaseModel):
+    profile_image_id: Optional[str] = Field(default=None, max_length=64)
+    character: int = Field(ge=0, le=3)
+
+
 class PlaceSummary(BaseModel):
     id: str
     name: str

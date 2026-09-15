@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import KoreaConquestMap from "../components/KoreaConquestMap";
 import { KOREA_REGIONS, findRegionByPlace } from "../data/koreaRegions";
+import { getProfileCharacter } from "../data/profileCharacters";
 import api from "../services/api";
 import "../styles/MyPage.css";
 import {
@@ -25,6 +26,8 @@ function readMemories() {
 function MyPage() {
   const navigate = useNavigate();
   const [username, setUsername] = useState("");
+  const [profileImageId, setProfileImageId] = useState(null);
+  const [character, setCharacter] = useState(0);
   const [posts, setPosts] = useState([]);
   const [selectedRegionKey, setSelectedRegionKey] = useState("seoul");
   const [memories, setMemories] = useState(readMemories);
@@ -49,6 +52,8 @@ function MyPage() {
         const myPosts = loadedPosts.filter((post) => post.author === me);
 
         setUsername(me);
+        setProfileImageId(meResponse.data.profile_image_id || null);
+        setCharacter(meResponse.data.character ?? 0);
         setPosts(myPosts);
       } catch (error) {
         console.error(error);
@@ -84,6 +89,7 @@ function MyPage() {
   );
   const selectedPosts = postsByRegion[selectedRegionKey] || [];
   const totalClaimed = Object.keys(postsByRegion).length;
+  const selectedCharacter = getProfileCharacter(character);
 
   const saveMemory = (memoryKey, nextMemory) => {
     setMemories((current) => {
@@ -122,13 +128,28 @@ function MyPage() {
   return (
     <main className="mypage">
       <section className="mypage-hero">
-        <div>
-          <p className="eyebrow">MY PAGE</p>
-          <h1>{username}님의 여행 점령 지도</h1>
-          <p>
-            공개 글은 모두가 보는 여행 정보로, 이곳의 일기와 비공개 사진은
-            나만 보는 기록으로 따로 남겨집니다.
-          </p>
+        <div className="mypage-profile-summary">
+          <div className="mypage-profile-avatar">
+            {profileImageId ? (
+              <img src={getImageSrc(profileImageId)} alt={`${username} 프로필`} />
+            ) : (
+              <img
+                src={selectedCharacter.image}
+                alt={`${selectedCharacter.name} 캐릭터`}
+              />
+            )}
+          </div>
+          <div>
+            <p className="eyebrow">MY PAGE</p>
+            <h1>{username}님의 여행 점령 지도</h1>
+            <p>
+              공개 글은 모두가 보는 여행 정보로, 이곳의 일기와 비공개 사진은
+              나만 보는 기록으로 따로 남겨집니다.
+            </p>
+            <small className="mypage-character-name">
+              {selectedCharacter.name}
+            </small>
+          </div>
         </div>
         <div className="conquest-score">
           <strong>{totalClaimed}</strong>
