@@ -659,10 +659,7 @@ def login(user: UserLogin):
 def me(uid: str = Depends(get_current_user_id)):
     con = db.connect()
 
-    query = (
-        'SELECT uid, id, profile_image_id, character '
-        'FROM "user".user WHERE uid = %s'
-    )
+    query = 'SELECT uid, id FROM "user".user WHERE uid = %s'
     result = db.executeQuery(con, query, (uid,))
 
     if not result:
@@ -671,42 +668,6 @@ def me(uid: str = Depends(get_current_user_id)):
     return {
         "uid": result[0][0],
         "username": result[0][1],
-        "profile_image_id": result[0][2],
-        "character": result[0][3],
-    }
-
-
-@app.put("/profile")
-def update_profile(
-    profile: UserProfileEdit,
-    uid: str = Depends(get_current_user_id),
-):
-    con = db.connect()
-    cur = con.cursor()
-    try:
-        cur.execute(
-            '''
-            UPDATE "user".user
-            SET profile_image_id = %s, character = %s
-            WHERE uid = %s
-            RETURNING profile_image_id, character
-            ''',
-            (profile.profile_image_id, profile.character, uid),
-        )
-        updated = cur.fetchone()
-        if updated is None:
-            raise HTTPException(status_code=404, detail="User not found")
-        con.commit()
-    except Exception:
-        con.rollback()
-        raise
-    finally:
-        cur.close()
-        con.close()
-
-    return {
-        "profile_image_id": updated[0],
-        "character": updated[1],
     }
 
 @app.get("/validate/{id}")
@@ -744,7 +705,6 @@ async def upload_image(
         shutil.copyfileobj(file.file, buffer)
 
     return {
-        "id": filename,
         "filename": saved_filename,
         "content_type": file.content_type
     }
