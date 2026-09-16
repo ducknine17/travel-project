@@ -36,6 +36,7 @@ from place_filter import (
     search_place_options,
     search_places,
 )
+from place_detail import get_place_detail
 
 dotenv.load_dotenv(Path(__file__).resolve().parents[1] / ".env")
 
@@ -299,6 +300,7 @@ def get_places(
     q: str = Query(default="", max_length=100),
     page: int = Query(default=1, ge=1),
     page_size: int = Query(default=20, ge=1, le=5000),
+    category: Literal["", "sea", "forest", "culture", "tour", "food", "cafe", "stay"] = "",
 ):
     """
     Filter tourist places by accessibility facilities.
@@ -306,7 +308,15 @@ def get_places(
     Repeat the filters query parameter to select multiple facilities. A place
     must contain every selected facility (AND semantics).
     """
-    return search_places(filters, page, page_size, q)
+    return search_places(filters, page, page_size, q, category)
+
+
+@app.get("/places/{place_id}")
+def place_detail(place_id: str):
+    result = get_place_detail(place_id)
+    if result is None:
+        raise HTTPException(404, "Place not found")
+    return result
 
 
 @app.get("/places/{place_id}/posts")
@@ -684,8 +694,9 @@ def me(uid: str = Depends(get_current_user_id)):
     con = db.connect()
     try:
         query = '''
-            SELECT uid, id, COALESCE(character, 0)
-            FROM "user".user
+            SELECT uid, id, COALESCE(character, 0),
+                   to_jsonb(u)->>'display_name', to_jsonb(u)->>'avatar'
+            FROM "user".user AS u
             WHERE uid = %s
         '''
         result = db.executeQuery(con, query, (uid,))
@@ -697,8 +708,31 @@ def me(uid: str = Depends(get_current_user_id)):
             "uid": result[0][0],
             "username": result[0][1],
             "character": result[0][2],
+            "display_name": result[0][3] if len(result[0]) > 3 else None,
+            "avatar": result[0][4] if len(result[0]) > 4 else None,
         }
     finally:
+        con.close()
+
+
+@app.put("/me/profile")
+def update_profile(request: ProfileUpdate, uid: str = Depends(get_current_user_id)):
+    name = request.display_name.strip()
+    if not name:
+        raise HTTPException(422, "Display name cannot be blank")
+    con = db.connect()
+    cur = con.cursor()
+    try:
+        cur.execute('UPDATE "user".user SET display_name = %s, avatar = %s WHERE uid = %s', (name, request.avatar, uid))
+        if cur.rowcount != 1:
+            raise HTTPException(404, "User not found")
+        con.commit()
+        return {"display_name": name, "avatar": request.avatar}
+    except Exception:
+        con.rollback()
+        raise
+    finally:
+        cur.close()
         con.close()
 
 
@@ -750,7 +784,7 @@ async def upload_image(
     if not file.content_type.startswith("image/"):
         raise HTTPException(status_code=400, detail="File provided is not an image.")
 
-    filetype = file.filename.split(".")[-1]
+    filetype = file.filename.split(".")[-1].lower()
     filename = idMaker()
     saved_filename = f"{filename}.{filetype}"
     destination = f"../image/{filename}.{filetype}"

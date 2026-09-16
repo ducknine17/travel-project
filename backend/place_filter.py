@@ -97,13 +97,25 @@ ACCESSIBILITY_FILTER_GROUPS = [
 ]
 
 
-def search_places(filters, page, page_size, query=""):
+def search_places(filters, page, page_size, query="", category=""):
     """Return places containing every requested accessibility tag."""
     selected = list(dict.fromkeys(item.value for item in filters))
     keyword = query.strip()
     offset = (page - 1) * page_size
     conditions = []
     params = []
+
+    if category:
+        # Legacy rows have broad types only; finer categories use place names.
+        conditions.append("""(CASE
+            WHEN name ~ '카페|커피|찻집|다방' THEN 'cafe'
+            WHEN type = 'food' THEN 'food'
+            WHEN type = 'stay' THEN 'stay'
+            WHEN type = 'culture' THEN 'culture'
+            WHEN name ~ '해변|해수욕장|해안|바다|바닷' THEN 'sea'
+            WHEN name ~ '공원|수목원|숲|자연휴양림|정원' THEN 'forest'
+            ELSE 'tour' END) = %s""")
+        params.append(category)
 
     if selected:
         conditions.append("COALESCE(tag, ARRAY[]::varchar[]) @> %s::varchar[]")

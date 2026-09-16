@@ -1,8 +1,10 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { profileName } from "../utils/profile";
 import api from "../services/api";
 import { getCharacterIndex, getCollection, normalizeCharacter, readBagSettings, setActiveCharacter } from "../data/collection";
 
 export default function useBag() {
+  const [profile, setProfile] = useState({});
   const [username, setUsername] = useState("");
   const [posts, setPosts] = useState([]);
   const [places, setPlaces] = useState([]);
@@ -15,6 +17,7 @@ export default function useBag() {
     try {
       const [me, allPosts] = await Promise.all([api.get("/me"), api.get("/load-post")]);
       setUsername(me.data.username);
+      setProfile(me.data);
       const savedSettings = readBagSettings(me.data.username);
       const nextSettings = {
         ...savedSettings,
@@ -43,5 +46,5 @@ export default function useBag() {
     }
     catch { setError("가방 설정을 저장하지 못했어요. 잠시 후 다시 시도해주세요."); return false; }
   };
-  return { username, posts, places, loading, error, reload: load, settings, saveSettings, ...collection };
+  return { displayName: profileName(profile), avatar: profile.avatar, username, posts, places, loading, error, reload: load, settings, saveSettings, ...collection };
 }

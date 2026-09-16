@@ -3,6 +3,7 @@ import PostDetailPage from "./PostDetailPage";
 import api from "../services/api";
 
 jest.mock("react-router-dom", () => ({
+  Link: ({to, children}) => <a href={to}>{children}</a>,
   useParams: () => ({ id: "missing-post" }),
   useNavigate: () => jest.fn(),
 }));
@@ -17,12 +18,12 @@ afterEach(() => {
 
 test("없는 게시글이면 계속 로딩하지 않고 안내한다", async () => {
   jest.spyOn(console, "error").mockImplementation(() => {});
-  api.get.mockRejectedValue({ response: { status: 404 } });
+  api.get.mockResolvedValue({ data: [] });
 
   render(<PostDetailPage />);
 
   expect(
-    await screen.findByText("존재하지 않거나 삭제된 게시글입니다.")
+    await screen.findByText("이 여행 기록을 찾지 못했어요")
   ).toBeInTheDocument();
   expect(screen.queryByText("불러오는 중...")).not.toBeInTheDocument();
 });

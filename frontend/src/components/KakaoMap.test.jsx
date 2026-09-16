@@ -142,7 +142,7 @@ test("여행지 핀을 누르면 장소 정보를 안전한 텍스트로 표시�
   expect(infoOptions.content.textContent).toContain("서울숲");
   expect(infoOptions.content.textContent).toContain("서울특별시 성동구");
   expect(infoOptions.content.textContent).toContain("관광지");
-  expect(infoOptions.content.textContent).toContain("주차, 휠체어");
+  expect(infoOptions.content.textContent).toContain("접근 가능한 주차시설, 휠체어 대여");
   const infoWindow = window.kakao.maps.InfoWindow.mock.results[0].value;
   expect(infoWindow.open).toHaveBeenCalledWith(map, marker);
   expect(onPlaceClick).toHaveBeenCalledWith(expect.objectContaining({ id: "place-1" }));

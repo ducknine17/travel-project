@@ -40,6 +40,11 @@ class CharacterUpdate(BaseModel):
     character: Literal[0, 1, 2, 3]
 
 
+class ProfileUpdate(BaseModel):
+    display_name: str = Field(min_length=1, max_length=24)
+    avatar: str = Field(default="", max_length=255, pattern=r"^([A-Za-z0-9_-]+\.(jpg|jpeg|png|webp))?$")
+
+
 class PlaceSummary(BaseModel):
     id: str
     name: str

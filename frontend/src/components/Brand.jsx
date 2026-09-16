@@ -4,6 +4,8 @@ import { normalizeCharacter, readActiveCharacter } from "../data/collection";
 
 export function Icon({ name = "paw", size = 22, ...props }) {
   const paths = {
+    bus: <><rect x="4" y="3" width="16" height="16" rx="3"/><path d="M4 11h16M8 19v3M16 19v3M8 6h8"/><circle cx="8" cy="15" r="1"/><circle cx="16" cy="15" r="1"/></>,
+    goggles: <><path d="M2 10h20M10 12h4"/><rect x="3" y="8" width="7" height="8" rx="3"/><rect x="14" y="8" width="7" height="8" rx="3"/></>,
     map: <><path d="m3 5 6-2 6 2 6-2v16l-6 2-6-2-6 2Z"/><path d="M9 3v16M15 5v16"/></>,
     pin: <><path d="M19 10c0 5-7 11-7 11S5 15 5 10a7 7 0 1 1 14 0Z"/><circle cx="12" cy="10" r="2.5"/></>,
     book: <><path d="M12 5C8 2 3 3 3 3v16s5-1 9 2c4-3 9-2 9-2V3s-5-1-9 2Z"/><path d="M12 5v16M6 8h3M15 8h3M6 12h3M15 12h3"/></>,

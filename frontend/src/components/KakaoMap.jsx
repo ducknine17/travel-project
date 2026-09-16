@@ -1,10 +1,14 @@
 import { useEffect, useRef, useState } from "react";
+import { facilityLabel } from "../data/travelFilters";
+import { markerImage } from "./mapMarkers";
 
 export const BUS_STATION_MAX_LEVEL = 5;
 
 function KakaoMap({
   places = [],
   stations = [],
+  buses = [],
+  onPlaceClick,
   onMapMove,
   onStationClick,
   onStatus,
@@ -14,6 +18,8 @@ function KakaoMap({
   const mapRef = useRef(null);
   const placeMarkersRef = useRef([]);
   const stationMarkersRef = useRef([]);
+  const busMarkersRef = useRef([]);
+  const clusterRef = useRef(null);
   const infoWindowRef = useRef(null);
 
   // 지도는 처음 한 번만 생성
@@ -78,6 +84,12 @@ function KakaoMap({
         }
       });
 
+      navigator.geolocation?.getCurrentPosition(({coords}) => {
+        if (cancelled) return;
+        map.setCenter(new window.kakao.maps.LatLng(coords.latitude, coords.longitude));
+        map.setLevel(5); setMapLevel(5);
+        onMapMove?.(coords.latitude, coords.longitude);
+      }, () => {}, {timeout: 6000, maximumAge: 300000});
       // 최초 위치에서도 정류장 요청
       const center = map.getCenter();
 
@@ -88,12 +100,14 @@ function KakaoMap({
         );
       }
     });
-    return () => {
+  return () => {
       cancelled = true;
       clearTimeout(timer);
       placeMarkersRef.current.forEach(marker => marker.setMap(null));
       stationMarkersRef.current.forEach(marker => marker.setMap(null));
       infoWindowRef.current?.close();
+      busMarkersRef.current.forEach(marker => marker.setMap(null));
+      clusterRef.current?.clear();
       mapRef.current = null;
     };
   }, [onMapMove, onStatus]);
@@ -104,6 +118,7 @@ function KakaoMap({
 
     if (!map || !window.kakao?.maps) return;
 
+    clusterRef.current?.clear();
     // 기존 마커 제거
     placeMarkersRef.current.forEach((marker) => {
       marker.setMap(null);
@@ -134,11 +149,22 @@ function KakaoMap({
           map,
           position,
           title: place.name,
+          image: markerImage("place"),
         });
 
+      window.kakao.maps.event.addListener(marker, "click", () => {
+        infoWindowRef.current?.close();
+        const label = document.createElement("div");
+        label.style.cssText = "padding:12px;max-width:260px;white-space:normal;color:#173858";
+        label.textContent = `${place.name} · ${place.address || ""} · ${{tour:"관광지",culture:"문화시설",food:"음식점",stay:"숙박"}[place.type] || "여행지"} · ${(place.tags || []).map(facilityLabel).join(", ")}`;
+        const info = new window.kakao.maps.InfoWindow({content: label});
+        info.open(map, marker); infoWindowRef.current = info;
+        onPlaceClick?.(place);
+      });
       placeMarkersRef.current.push(marker);
     });
-  }, [places, ready]);
+    if (window.kakao.maps.MarkerClusterer) clusterRef.current = new window.kakao.maps.MarkerClusterer({map, markers: placeMarkersRef.current, averageCenter: true, minLevel: 7});
+  }, [places, ready, onPlaceClick]);
 
   // 버스 정류장 마커
   useEffect(() => {
@@ -162,41 +188,7 @@ function KakaoMap({
     // 카카오맵은 level 숫자가 작을수록 더 확대된 상태다.
     if (mapLevel > BUS_STATION_MAX_LEVEL) return;
 
-    // 버스 정류장 전용 아이콘
-    const busIconSvg = `
-      <svg
-        width="36"
-        height="36"
-        viewBox="0 0 36 36"
-        xmlns="http://www.w3.org/2000/svg"
-      >
-        <circle
-          cx="18"
-          cy="18"
-          r="16"
-          fill="white"
-          stroke="#4A90E2"
-          stroke-width="2"
-        />
-
-        <text
-          x="18"
-          y="24"
-          text-anchor="middle"
-          font-size="18"
-        >🚌</text>
-      </svg>
-    `;
-
-    const busIcon =
-      new window.kakao.maps.MarkerImage(
-        "data:image/svg+xml;charset=UTF-8," +
-          encodeURIComponent(busIconSvg),
-        new window.kakao.maps.Size(36, 36),
-        {
-          offset: new window.kakao.maps.Point(18, 18),
-        }
-      );
+    const busIcon = markerImage("station");
 
     stations.forEach((station) => {
       const latitude = Number(station.latitude);
@@ -256,6 +248,16 @@ function KakaoMap({
       stationMarkersRef.current.push(marker);
     });
   }, [stations, onStationClick, ready, mapLevel]);
+
+    useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !ready) return;
+    busMarkersRef.current.forEach(marker => marker.setMap(null));
+    busMarkersRef.current = buses.filter(bus => Number.isFinite(Number(bus.latitude)) && Number.isFinite(Number(bus.longitude))).map(bus => new window.kakao.maps.Marker({
+      map, position: new window.kakao.maps.LatLng(Number(bus.latitude), Number(bus.longitude)), title: bus.vehicleNumber || "운행 버스", zIndex: 5,
+      image: markerImage(bus.lowPlate === true || String(bus.vehicleType || "").includes("저상") ? "lowBus" : "bus"),
+    }));
+  }, [buses, ready]);
 
   return (
     <div

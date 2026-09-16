@@ -2,6 +2,8 @@ import { fireEvent, render, screen } from "@testing-library/react";
 import MapPage from "./MapPage";
 import api from "../services/api";
 
+jest.mock("react-router-dom", () => ({Link: ({to,children}) => <a href={to}>{children}</a>}));
+
 jest.mock("../services/api", () => ({ get: jest.fn() }));
 
 jest.mock("../components/KakaoMap", () => function MockKakaoMap({
@@ -40,11 +42,11 @@ jest.mock("../components/KakaoMap", () => function MockKakaoMap({
   );
 });
 
-test("지도용 장소를 모두 요청하고 핀을 누르면 해당 장소 게시글을 표시한다", async () => {
+test("현재 페이지의 장소를 요청하고 핀을 누르면 해당 장소 게시글을 표시한다", async () => {
   api.get.mockImplementation((url, options) => {
     if (url === "/places/filters") return Promise.resolve({ data: { groups: [] } });
     if (url === "/places") {
-      expect(options.params.get("page_size")).toBe("5000");
+      expect(options.params.get("page_size")).toBe("30");
       return Promise.resolve({
         data: {
           items: [{
@@ -72,8 +74,8 @@ test("지도용 장소를 모두 요청하고 핀을 누르면 해당 장소 게
   fireEvent.click(await screen.findByRole("button", { name: "경복궁" }));
   expect(await screen.findByRole("link", { name: "휠체어로 다녀온 경복궁" }))
     .toHaveAttribute("href", "/post/post-1");
-  expect(screen.getByText(/여행자/)).toBeInTheDocument();
-  expect(screen.getByText("지도 장소 1개")).toBeInTheDocument();
+  expect(screen.getByText(/여행자 ·/)).toBeInTheDocument();
+  expect(screen.getByText(/지도 장소 1개/)).toBeInTheDocument();
 });
 
 test("서울 정류장을 누르면 노선과 실시간 차량 위치를 지도에 전달한다", async () => {

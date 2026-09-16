@@ -6,3 +6,24 @@
 @media(prefers-reduced-motion:no-preference) { .travel-bag { animation:paper-in .5s ease; } }
 .traveler-identity>div:last-child { min-width:0; max-width:100%; }
 .traveler-identity h3 { white-space:normal; overflow-wrap:anywhere; word-break:break-word; }
+/* Relative anchors keep worn items attached when the mascot scales. */
+.dressed-mascot { position:relative; width:270px; max-width:100%; aspect-ratio:1; margin:auto; }
+.dressed-mascot>.mascot { width:100%; height:100%; }
+.worn-badges { position:absolute; left:29%; top:63%; width:32%; display:flex; justify-content:center; flex-wrap:wrap; gap:2px; }
+.worn-badges .badge-art { width:25%; height:auto; aspect-ratio:1; padding:2px; border-width:1px; }
+.worn-badges .badge-scene>svg { width:70%; height:70%; }.worn-badges .badge-paw { display:none; }
+.worn-item { position:absolute; width:17%; color:var(--navy); filter:drop-shadow(1px 2px 0 #17385833); transform:rotate(9deg); }
+.worn-item>svg { width:100%; height:auto; fill:#fff4d9; stroke-width:1.3; }
+.worn-hat { width:44%; left:30%; top:8%; transform:rotate(-5deg); }
+.worn-goggles { width:31%; left:35%; top:20%; transform:rotate(-5deg); }.worn-goggles svg { fill:#badce8; }
+.worn-compass { right:12%; top:57%; }.worn-camera { right:12%; top:75%; }.worn-bottle { left:12%; top:62%; }.worn-book { left:19%; top:76%; }
+.decorate-preview h2 { overflow-wrap:anywhere; font-family:'Gowun Dodum',sans-serif; font-weight:700; }
+.decoration-panel { border:0; padding:0; margin:0; min-width:0; }
+.friend-name-form { margin:12px 0 22px; }.friend-name-form>label { display:block; font-size:12px; margin-bottom:7px; }.friend-name-form>div { display:flex; gap:8px; }.friend-name-form input { width:100%; min-width:0; }.friend-name-form button { white-space:nowrap; }
+.collection-summary { gap:15px; flex-wrap:wrap; }.collection-summary .button { font-size:13px; }
+.album-bottom { flex-wrap:wrap; padding:18px 0; }.album-bottom>.button { margin-right:auto; }
+.traveler-identity h3 { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; max-width:160px; }.traveler-identity>div:last-child { min-width:0; }.traveler-avatar { display:grid; place-items:center; flex-shrink:0; }
+.items-pocket .decorate-cta { display:flex; width:100%; font-size:12px; padding:10px 7px; }
+.dressed-mascot.peeking-friend { position:absolute; margin:0; width:175px; }
+@media(max-width:900px) { .decorate-preview .dressed-mascot { width:190px; } }
+@media(max-width:650px) { .dressed-mascot.peeking-friend { width:133px; }.items-pocket .decorate-cta { font-size:10px; }.collection-summary>.button { width:100%; }.album-bottom>.button { margin:auto; }.traveler-identity h3 { max-width:90px; }.friend-choices .mascot { width:min(140px,100%); } }

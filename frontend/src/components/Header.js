@@ -1,5 +1,6 @@
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useState, useEffect, useRef } from "react";
+import { profileName } from "../utils/profile";
 import api from "../services/api";
 import { Icon, Logo } from "./Brand";
 import { notifyLikes } from "../hooks/useLikes";
@@ -17,7 +18,7 @@ export default function Header() {
     let cancelled = false;
     setAuthStatus("checking");
     api.get("/me").then(res => {
-      if (!cancelled) { setUsername(res.data.username); setActiveCharacter(normalizeCharacter(res.data.character)); setAuthStatus("authenticated"); }
+      if (!cancelled) { setUsername(profileName(res.data)); setActiveCharacter(normalizeCharacter(res.data.character)); setAuthStatus("authenticated"); }
     }).catch(err => {
       if (cancelled) return;
       if (err.response?.status === 401) localStorage.removeItem("token");
@@ -30,6 +31,11 @@ export default function Header() {
     const escape = e => { if (e.key === "Escape") setShowMenu(false); };
     document.addEventListener("mousedown", dismiss); document.addEventListener("keydown", escape);
     return () => { document.removeEventListener("mousedown", dismiss); document.removeEventListener("keydown", escape); };
+  }, []);
+  useEffect(() => {
+    const update = e => setUsername(profileName(e.detail));
+    window.addEventListener("bef-profile-change", update);
+    return () => window.removeEventListener("bef-profile-change", update);
   }, []);
   const logout = () => { localStorage.removeItem("token"); setActiveCharacter("retriever"); setAuthStatus("unauthenticated"); setUsername(""); setShowMenu(false); notifyLikes(); navigate("/"); };
   const bagPage = location.pathname === "/mypage";
