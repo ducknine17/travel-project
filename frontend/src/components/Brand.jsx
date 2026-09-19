@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { normalizeCharacter, readActiveCharacter } from "../data/collection";
+import "../styles/Header.css";
 
 export function Icon({ name = "paw", size = 22, ...props }) {
   const paths = {
@@ -34,7 +35,7 @@ export function Icon({ name = "paw", size = 22, ...props }) {
 }
 
 export function Logo() {
-  return <Link className="brand-logo" to="/" aria-label="BF 베프 홈"><span className="brand-mark"><Icon size={24}/></span><strong>F</strong><span>베프</span><small>함께, 한 걸음</small></Link>;
+  return <Link className="brand-logo" to="/" aria-label="BF 베프 홈"><span className="header-brand"><img className="header-brand-image" src={`${process.env.PUBLIC_URL}/bef-logo.png`} alt="BF 베프"/></span><small>함께, 한 걸음</small></Link>;
 }
 
 export function Mascot({ pose = "bag", className = "", character }) {

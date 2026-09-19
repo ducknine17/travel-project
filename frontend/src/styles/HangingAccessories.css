@@ -1,0 +1,12 @@
+.hanging-accessories { display:block; overflow:visible; pointer-events:none; }
+.hanger-tab { fill:#42698c; stroke:#193c5b; stroke-width:2; }
+.hanger-stitch { fill:none; stroke:#abc3d5; stroke-width:1; stroke-dasharray:2 2; }
+.hanger-rivet { fill:#eac477; stroke:#795727; stroke-width:1; }
+.hanger-ring { fill:none; stroke:#d4a64f; stroke-width:4; paint-order:stroke; filter:drop-shadow(0 1px 0 #173858); }
+.hanger-cord { fill:none; stroke:#a67c39; stroke-width:2.5; stroke-linecap:round; }
+.hanger-piece { overflow:hidden; filter:drop-shadow(1px 2px 1px #17385830); }
+.dressed-mascot>.worn-tools { position:absolute; left:70%; top:55%; width:27%; height:auto; }
+.travel-bag>.bag-charms { position:absolute; right:-5px; bottom:44px; width:94px; height:auto; z-index:5; }
+@media(max-width:650px) {
+  .travel-bag>.bag-charms { right:-3px; bottom:44px; width:70px; }
+}

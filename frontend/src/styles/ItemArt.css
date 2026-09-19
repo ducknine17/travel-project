@@ -1,0 +1,16 @@
+.travel-item-art {
+  display: block;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+}
+
+.item-art > .travel-item-art { width: 82%; height: 82%; }
+.item-preview a > .travel-item-art { width: 45px; height: 48px; margin: auto; }
+.equipped-item > .travel-item-art { width: 29px; height: 32px; }
+
+@media (max-width: 650px) {
+  .item-art > .travel-item-art { width: 86%; height: 86%; }
+  .item-preview a > .travel-item-art { width: 30px; height: 34px; }
+  .equipped-item > .travel-item-art { width: 23px; height: 26px; }
+}
