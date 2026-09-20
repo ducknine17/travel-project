@@ -15,7 +15,7 @@ export default function ItemArt({ item, className = "" }) {
   if (!frame) return null;
   return (
     <svg className={`travel-item-art ${className}`} viewBox={frame} preserveAspectRatio="xMidYMin meet" aria-hidden="true" focusable="false">
-      <image href={`${process.env.PUBLIC_URL}/assets/bf/travel-items.png`} width="1536" height="1024"/>
+      <image href={`${process.env.PUBLIC_URL}/assets/bf/travel-items.png?v=20260921`} width="1536" height="1024"/>
     </svg>
   );
 }
