@@ -27,7 +27,6 @@ export function Icon({ name = "paw", size = 22, ...props }) {
     flag: <><path d="M5 22V2l15 3-15 5M10 22h-9"/><path d="m12 20 2-2 2 2 3-3"/></>,
     star: <path d="m12 2 3 6 7 1-5 5 1 7-6-3-6 3 1-7-5-5 7-1Z"/>,
     bottle: <><path d="M9 2h6v5l3 3v12H6V10l3-3ZM9 5h6M9 14h6M12 11v6"/></>,
-    hat: <><path d="M5 15 7 5q5-3 10 0l2 10M5 15h14c6 0 4 5-7 5S-1 15 5 15ZM6 11h12"/></>,
     scarf: <><path d="M5 3h14v6H5ZM8 9l-2 12h6l2-12M14 9l4 9 4-3-5-6"/></>,
     heart: <path d="M12 21S1 14 2 7c1-6 8-6 10-1 2-5 9-5 10 1 1 7-10 14-10 14Z"/>,
   };

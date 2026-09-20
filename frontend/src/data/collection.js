@@ -17,7 +17,6 @@ export const ITEMS = [
   { id: "camera", name: "카메라", icon: "camera", condition: "사진이 있는 여행 글 5개 작성" },
   { id: "bottle", name: "텀블러", icon: "bottle", condition: "친환경 여행지 방문 확인", pending: true },
   { id: "book", name: "여행 수첩", icon: "book", condition: "첫 여행 글 작성" },
-  { id: "hat", name: "여행 모자", icon: "hat", condition: "서로 다른 5일에 여행 글 작성" },
   { id: "scarf", name: "파란 스카프", icon: "scarf", condition: "첫 여행 글 작성" },
 ];
 
@@ -44,7 +43,7 @@ export function getCollection(posts = [], places = []) {
   const culturePlaces = new Set(places.filter(p => p.type === "culture").map(p => p.name));
   const earned = { first: posts.length > 0, culture: posts.some(p => culturePlaces.has(p.place)), five: days >= 5, ten: days >= 10 };
   const placeCount = new Set(posts.map(p => p.place?.trim()).filter(Boolean)).size;
-  const items = { compass: placeCount >= 5, camera: posts.filter(p => p.photo?.length).length >= 5, book: posts.length > 0, hat: days >= 5, scarf: posts.length > 0 };
+  const items = { compass: placeCount >= 5, camera: posts.filter(p => p.photo?.length).length >= 5, book: posts.length > 0, scarf: posts.length > 0 };
   return { badges: BADGES.map(b => ({ ...b, earned: !!earned[b.id] })), items: ITEMS.map(i => ({ ...i, earned: !!items[i.id] })), days, placeCount, level: days >= 10 ? "든든한 여행 친구" : days >= 5 ? "익숙한 여행 친구" : posts.length ? "첫걸음을 함께한 친구" : "여행을 기다리는 친구" };
 }
 

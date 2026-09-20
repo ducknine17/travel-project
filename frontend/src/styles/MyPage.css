@@ -12,10 +12,6 @@
 .worn-badges { position:absolute; left:24%; top:63%; width:42%; display:flex; justify-content:center; flex-wrap:wrap; gap:3px; }
 .worn-badges .badge-art { width:30%; height:auto; aspect-ratio:1; padding:3px; border-width:1px; }
 .worn-badges .badge-scene>svg { width:70%; height:70%; }.worn-badges .badge-paw { display:none; }
-.worn-hat { position:absolute; z-index:2; width:72%; height:55%; left:14%; top:-24%; transform:rotate(3deg); transform-origin:50% 80%; pointer-events:none; }
-.character-poodle .worn-hat { width:76%; left:12%; top:-20%; }
-.character-shiba .worn-hat { width:66%; left:17%; top:-25%; transform:rotate(0); }
-.character-dachshund .worn-hat { top:-23%; }
 .decorate-preview h2 { overflow-wrap:anywhere; font-family:'Gowun Dodum',sans-serif; font-weight:700; }
 .decoration-panel { border:0; padding:0; margin:0; min-width:0; }
 .friend-name-form { margin:12px 0 22px; }.friend-name-form>label { display:block; font-size:12px; margin-bottom:7px; }.friend-name-form>div { display:flex; gap:8px; }.friend-name-form input { width:100%; min-width:0; }.friend-name-form button { white-space:nowrap; }
