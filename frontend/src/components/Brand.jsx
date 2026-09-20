@@ -34,7 +34,7 @@ export function Icon({ name = "paw", size = 22, ...props }) {
 }
 
 export function Logo() {
-  return <Link className="brand-logo" to="/" aria-label="BF 베프 홈"><span className="brand-mark" aria-hidden="true"><Icon size={23}/></span><strong aria-hidden="true">F</strong><span aria-hidden="true">베프</span><small aria-hidden="true">함께, 한 걸음</small></Link>;
+  return <Link className="brand-logo" to="/" aria-label="BF 베프 홈"><img src={`${process.env.PUBLIC_URL}/assets/bf/bef-logo.png`} alt=""/></Link>;
 }
 
 export function Mascot({ pose = "bag", className = "", character }) {
