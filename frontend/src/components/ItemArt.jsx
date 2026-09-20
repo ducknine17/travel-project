@@ -2,12 +2,12 @@ import "../styles/ItemArt.css";
 
 // Each viewBox displays one accessory from the shared transparent sprite.
 const FRAMES = {
-  compass: "140 120 310 370",
-  camera: "600 130 340 325",
-  bottle: "1145 90 240 400",
-  book: "140 545 310 365",
-  hat: "560 668 420 230",
-  map: "1085 580 370 340",
+  compass: "90 80 390 440",
+  camera: "560 100 430 400",
+  bottle: "1145 65 300 470",
+  book: "85 530 390 420",
+  hat: "500 600 540 340",
+  scarf: "1050 650 460 330",
 };
 
 export default function ItemArt({ item, className = "" }) {

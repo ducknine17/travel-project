@@ -3,7 +3,7 @@ from unittest.mock import patch
 
 from fastapi import HTTPException
 
-from main import get_bus_location, get_bus_routes
+from main import get_bus_location, get_bus_route_path, get_bus_routes
 
 
 class BusLocationTest(unittest.TestCase):
@@ -33,6 +33,14 @@ class BusLocationTest(unittest.TestCase):
             expected,
         )
         get_routes.assert_called_once_with("02128")
+
+    @patch("main.get_seoul_bus_route_path")
+    def test_uses_seoul_api_for_route_path(self, get_path):
+        expected = [{"latitude": "37.5666", "longitude": "126.9781"}]
+        get_path.return_value = expected
+
+        self.assertEqual(get_bus_route_path("11", "100100118"), expected)
+        get_path.assert_called_once_with("100100118")
 
 
 if __name__ == "__main__":

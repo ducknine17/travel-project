@@ -8,6 +8,7 @@ function KakaoMap({
   places = [],
   stations = [],
   buses = [],
+  routePath = [],
   onPlaceClick,
   onMapMove,
   onStationClick,
@@ -19,6 +20,7 @@ function KakaoMap({
   const placeMarkersRef = useRef([]);
   const stationMarkersRef = useRef([]);
   const busMarkersRef = useRef([]);
+  const routeLineRef = useRef(null);
   const clusterRef = useRef(null);
   const infoWindowRef = useRef(null);
 
@@ -107,6 +109,7 @@ function KakaoMap({
       stationMarkersRef.current.forEach(marker => marker.setMap(null));
       infoWindowRef.current?.close();
       busMarkersRef.current.forEach(marker => marker.setMap(null));
+      routeLineRef.current?.setMap(null);
       clusterRef.current?.clear();
       mapRef.current = null;
     };
@@ -249,14 +252,54 @@ function KakaoMap({
     });
   }, [stations, onStationClick, ready, mapLevel]);
 
-    useEffect(() => {
+  // 선택한 노선의 정류장 좌표를 순서대로 이어 경로를 표시한다.
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !ready || !window.kakao?.maps?.Polyline) return;
+    routeLineRef.current?.setMap(null);
+    routeLineRef.current = null;
+    const path = routePath
+      .filter(point => Number.isFinite(Number(point.latitude)) && Number.isFinite(Number(point.longitude)))
+      .map(point => new window.kakao.maps.LatLng(Number(point.latitude), Number(point.longitude)));
+    if (path.length < 2) return;
+    routeLineRef.current = new window.kakao.maps.Polyline({
+      map,
+      path,
+      strokeWeight: 6,
+      strokeColor: "#517ea6",
+      strokeOpacity: 0.82,
+      strokeStyle: "solid",
+      zIndex: 2,
+    });
+  }, [routePath, ready]);
+
+  // 실시간 버스 위치와 저상버스 여부를 차량 마커로 표시한다.
+  useEffect(() => {
     const map = mapRef.current;
     if (!map || !ready) return;
     busMarkersRef.current.forEach(marker => marker.setMap(null));
-    busMarkersRef.current = buses.filter(bus => Number.isFinite(Number(bus.latitude)) && Number.isFinite(Number(bus.longitude))).map(bus => new window.kakao.maps.Marker({
-      map, position: new window.kakao.maps.LatLng(Number(bus.latitude), Number(bus.longitude)), title: bus.vehicleNumber || "운행 버스", zIndex: 5,
-      image: markerImage(bus.lowPlate === true || String(bus.vehicleType || "").includes("저상") ? "lowBus" : "bus"),
-    }));
+    busMarkersRef.current = buses.filter(bus => Number.isFinite(Number(bus.latitude)) && Number.isFinite(Number(bus.longitude))).map(bus => {
+      const isLowFloor = bus.lowFloor === true || String(bus.vehicleType || "").includes("저상");
+      const hasVehicleType = bus.lowFloor != null || Boolean(bus.vehicleType);
+      const vehicleTypeLabel = isLowFloor ? "♿ 저상버스" : (hasVehicleType ? (bus.vehicleType || "일반버스") : "차량 유형 미제공");
+      const marker = new window.kakao.maps.Marker({
+        map,
+        position: new window.kakao.maps.LatLng(Number(bus.latitude), Number(bus.longitude)),
+        title: bus.vehicleNumber || "운행 버스",
+        zIndex: 5,
+        image: markerImage(isLowFloor ? "lowBus" : (hasVehicleType ? "bus" : "unknownBus")),
+      });
+      window.kakao.maps.event.addListener(marker, "click", () => {
+        infoWindowRef.current?.close();
+        const label = document.createElement("div");
+        label.className = "bus-map-info";
+        label.textContent = `🚌 ${bus.vehicleNumber || "운행 버스"} · ${vehicleTypeLabel}${bus.nodeName ? ` · ${bus.nodeName} 인근` : ""}`;
+        const info = new window.kakao.maps.InfoWindow({content: label});
+        info.open(map, marker);
+        infoWindowRef.current = info;
+      });
+      return marker;
+    });
   }, [buses, ready]);
 
   return (

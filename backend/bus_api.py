@@ -193,6 +193,11 @@ def get_seoul_bus_locations(route_id: str) -> list[dict]:
     )
     response.raise_for_status()
 
+    vehicle_types = {
+        "0": "일반버스",
+        "1": "저상버스",
+        "2": "굴절버스",
+    }
     return [
         {
             "routeName": None,
@@ -202,6 +207,11 @@ def get_seoul_bus_locations(route_id: str) -> list[dict]:
             "nodeName": None,
             "nodeId": item.get("nextStId"),
             "routeType": item.get("busType"),
+            "vehicleType": vehicle_types.get(
+                str(item.get("busType")),
+                "차량 정보 미제공",
+            ),
+            "lowFloor": str(item.get("busType")) == "1",
             "vehicleNumber": item.get("plainNo"),
             "vehicleId": item.get("vehId"),
             "updatedAt": item.get("dataTm"),
@@ -210,6 +220,36 @@ def get_seoul_bus_locations(route_id: str) -> list[dict]:
         for item in _seoul_realtime_items(response.json())
         if item.get("gpsX") is not None and item.get("gpsY") is not None
     ]
+
+
+def get_seoul_bus_route_path(route_id: str) -> list[dict]:
+    """Return the ordered station coordinates for a Seoul bus route."""
+    response = requests.get(
+        f"{SEOUL_REALTIME_BUS_API_BASE_URL}/busRouteInfo/getStaionByRoute",
+        params={
+            "serviceKey": get_service_key(),
+            "busRouteId": route_id,
+            "resultType": "json",
+        },
+        timeout=10,
+    )
+    response.raise_for_status()
+
+    points = []
+    for item in _seoul_realtime_items(response.json()):
+        latitude = item.get("gpsY")
+        longitude = item.get("gpsX")
+        if latitude is None or longitude is None:
+            continue
+        points.append({
+            "latitude": latitude,
+            "longitude": longitude,
+            "nodeOrder": item.get("seq"),
+            "nodeName": item.get("stationNm"),
+            "nodeId": item.get("station"),
+        })
+
+    return points
 
 
 def get_seoul_station_routes(ars_id: str) -> list[dict]:

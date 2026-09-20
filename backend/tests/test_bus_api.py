@@ -9,6 +9,7 @@ from bus_api import (
     get_osm_bus_stations,
     get_response_items,
     get_seoul_bus_locations,
+    get_seoul_bus_route_path,
     get_seoul_bus_stations,
     get_seoul_station_routes,
     get_seoul_service_key,
@@ -103,6 +104,25 @@ class FakeSeoulStationRoutesResponse:
         }
 
 
+class FakeSeoulRoutePathResponse:
+    def raise_for_status(self):
+        pass
+
+    def json(self):
+        return {
+            "msgHeader": {"headerCd": "0", "headerMsg": "정상 처리"},
+            "msgBody": {
+                "itemList": [{
+                    "gpsX": "126.9781",
+                    "gpsY": "37.5666",
+                    "seq": "1",
+                    "stationNm": "서울역버스환승센터",
+                    "station": "100000001",
+                }]
+            },
+        }
+
+
 class BusApiTest(unittest.TestCase):
     def test_decodes_service_key_before_query_encoding(self):
         with patch.dict(os.environ, {"OPENAPI_KEY": "abc%2Fdef%2Bghi%3D%3D"}):
@@ -176,6 +196,8 @@ class BusApiTest(unittest.TestCase):
 
         self.assertEqual(buses[0]["vehicleId"], "1234567")
         self.assertEqual(buses[0]["vehicleNumber"], "서울70사1234")
+        self.assertEqual(buses[0]["vehicleType"], "일반버스")
+        self.assertFalse(buses[0]["lowFloor"])
         self.assertEqual(buses[0]["source"], "seoul-public-data")
         self.assertEqual(
             get.call_args.kwargs["params"]["busRouteId"],
@@ -193,6 +215,15 @@ class BusApiTest(unittest.TestCase):
         self.assertEqual(routes[0]["routeId"], "100100118")
         self.assertEqual(routes[0]["routeName"], "701")
         self.assertEqual(get.call_args.kwargs["params"]["arsId"], "02128")
+
+    @patch.dict(os.environ, {"OPENAPI_KEY": "test-key"})
+    @patch("bus_api.requests.get", return_value=FakeSeoulRoutePathResponse())
+    def test_returns_seoul_bus_route_path(self, get):
+        path = get_seoul_bus_route_path("100100118")
+
+        self.assertEqual(path[0]["nodeName"], "서울역버스환승센터")
+        self.assertEqual(path[0]["latitude"], "37.5666")
+        self.assertIn("getStaionByRoute", get.call_args.args[0])
 
 
 if __name__ == "__main__":

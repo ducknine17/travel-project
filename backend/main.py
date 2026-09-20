@@ -24,6 +24,7 @@ from bus_api import (
     get_osm_bus_stations,
     get_response_items,
     get_seoul_bus_locations,
+    get_seoul_bus_route_path,
     get_seoul_bus_stations,
     get_seoul_station_routes,
     get_service_key,
@@ -103,6 +104,10 @@ def get_bus_location(
                 "nodeId": bus.get("nodeid"),
                 "routeType": bus.get("routetp"),
                 "vehicleNumber": bus.get("vehicleno"),
+                # TAGO's location response does not expose vehicle type.
+                # Arrival data still carries this field for approaching buses.
+                "vehicleType": None,
+                "lowFloor": None,
             })
 
         return buses
@@ -111,6 +116,52 @@ def get_bus_location(
         raise HTTPException(
             status_code=500,
             detail=f"버스 API 요청 실패: {str(e)}"
+        )
+
+
+@app.get("/bus-route-path")
+def get_bus_route_path(city_code: str, route_id: str):
+    """Return ordered coordinates used to draw the selected bus route."""
+    if city_code == "11":
+        try:
+            return get_seoul_bus_route_path(route_id)
+        except (requests.RequestException, RuntimeError, ValueError):
+            raise HTTPException(
+                status_code=502,
+                detail="서울 버스 노선 경로 API 요청에 실패했습니다.",
+            )
+
+    url = (
+        "https://apis.data.go.kr/1613000/BusRouteInfoInqireService/"
+        "getRouteAcctoThrghSttnList"
+    )
+    try:
+        params = {
+            "serviceKey": get_service_key(),
+            "pageNo": 1,
+            "numOfRows": 300,
+            "_type": "json",
+            "cityCode": city_code,
+            "routeId": route_id,
+        }
+        response = requests.get(url, params=params, timeout=10)
+        response.raise_for_status()
+        return [
+            {
+                "latitude": item.get("gpslati"),
+                "longitude": item.get("gpslong"),
+                "nodeOrder": item.get("nodeord"),
+                "nodeName": item.get("nodenm"),
+                "nodeId": item.get("nodeid"),
+            }
+            for item in get_response_items(response.json())
+            if item.get("gpslati") is not None
+            and item.get("gpslong") is not None
+        ]
+    except (requests.RequestException, RuntimeError, ValueError):
+        raise HTTPException(
+            status_code=502,
+            detail="버스 노선 경로 API 요청에 실패했습니다.",
         )
 
 

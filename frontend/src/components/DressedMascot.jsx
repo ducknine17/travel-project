@@ -6,7 +6,7 @@ import HangingAccessories from "./HangingAccessories";
 export default function DressedMascot({ character, badges = [], items = [], className = "" }) {
   const hat = items.find(item => item.id === "hat");
   const tools = items.filter(item => item.id !== "hat");
-  return <div className={`dressed-mascot ${className}`} aria-label="배지와 아이템을 착용한 여행 친구">
+  return <div className={`dressed-mascot character-${character} ${className}`} aria-label="배지와 아이템을 착용한 여행 친구">
     <Mascot character={character}/>
     {hat && <span className="worn-hat" title={hat.name}><ItemArt item={hat}/></span>}
     <HangingAccessories items={tools} className="worn-tools"/>

@@ -10,6 +10,7 @@ jest.mock("../components/KakaoMap", () => function MockKakaoMap({
   places,
   stations,
   buses,
+  routePath,
   onMapMove,
   onPlaceClick,
   onStationClick,
@@ -38,6 +39,7 @@ jest.mock("../components/KakaoMap", () => function MockKakaoMap({
         </button>
       ))}
       <span data-testid="bus-count">{buses.length}</span>
+      <span data-testid="route-point-count">{routePath.length}</span>
     </div>
   );
 });
@@ -113,6 +115,14 @@ test("서울 정류장을 누르면 노선과 실시간 차량 위치를 지도�
         }],
       });
     }
+    if (url === "/bus-route-path") {
+      return Promise.resolve({
+        data: [
+          { latitude: "37.566254", longitude: "126.976921" },
+          { latitude: "37.570100", longitude: "126.982000" },
+        ],
+      });
+    }
     return Promise.reject(new Error(`unexpected request: ${url}`));
   });
 
@@ -123,7 +133,11 @@ test("서울 정류장을 누르면 노선과 실시간 차량 위치를 지도�
   expect(await screen.findByRole("button", { name: "701" })).toBeInTheDocument();
   expect(await screen.findByText(/운행 차량 1대를 표시했습니다/)).toBeInTheDocument();
   expect(screen.getByTestId("bus-count")).toHaveTextContent("1");
+  expect(screen.getByTestId("route-point-count")).toHaveTextContent("2");
   expect(api.get).toHaveBeenCalledWith("/bus-location", {
+    params: { city_code: "11", route_id: "100100118" },
+  });
+  expect(api.get).toHaveBeenCalledWith("/bus-route-path", {
     params: { city_code: "11", route_id: "100100118" },
   });
 });

@@ -39,6 +39,10 @@ const createKakaoMock = () => {
     options,
     clear: jest.fn(),
   }));
+  const Polyline = jest.fn((options) => ({
+    options,
+    setMap: jest.fn(),
+  }));
 
   window.kakao = {
     maps: {
@@ -51,6 +55,7 @@ const createKakaoMock = () => {
       Point: jest.fn(),
       InfoWindow,
       MarkerClusterer,
+      Polyline,
       event: { addListener: jest.fn() },
     },
   };
@@ -219,4 +224,60 @@ test("실시간 버스 좌표를 별도 차량 마커로 표시한다", async ()
       expect.objectContaining({ map, title: "서울74사4513", zIndex: 5 })
     );
   });
+});
+
+test("선택한 버스 노선을 경로선으로 표시한다", async () => {
+  const map = createKakaoMock();
+  Object.defineProperty(navigator, "geolocation", {
+    configurable: true,
+    value: { getCurrentPosition: jest.fn((_success, error) => error()) },
+  });
+
+  render(
+    <KakaoMap
+      routePath={[
+        { latitude: "37.5665", longitude: "126.9780" },
+        { latitude: "37.5700", longitude: "126.9820" },
+      ]}
+    />
+  );
+
+  await waitFor(() => {
+    expect(window.kakao.maps.Polyline).toHaveBeenCalledWith(
+      expect.objectContaining({ map, strokeColor: "#517ea6" })
+    );
+  });
+  const path = window.kakao.maps.Polyline.mock.calls[0][0].path;
+  expect(path).toHaveLength(2);
+  expect(path[0].getLat()).toBe(37.5665);
+});
+
+test("저상버스를 초록색 접근성 차량 마커로 구분한다", async () => {
+  const map = createKakaoMock();
+  Object.defineProperty(navigator, "geolocation", {
+    configurable: true,
+    value: { getCurrentPosition: jest.fn((_success, error) => error()) },
+  });
+
+  render(
+    <KakaoMap
+      buses={[{
+        vehicleNumber: "서울74사4513",
+        latitude: "37.623453",
+        longitude: "126.916968",
+        vehicleType: "저상버스",
+        lowFloor: true,
+      }]}
+    />
+  );
+
+  await waitFor(() => expect(window.kakao.maps.Marker).toHaveBeenCalled());
+  expect(window.kakao.maps.MarkerImage).toHaveBeenCalledWith(
+    expect.stringContaining("%23749b73"),
+    expect.anything(),
+    expect.anything()
+  );
+  expect(window.kakao.maps.Marker).toHaveBeenCalledWith(
+    expect.objectContaining({ map, title: "서울74사4513" })
+  );
 });

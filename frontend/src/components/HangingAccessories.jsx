@@ -1,7 +1,7 @@
 import ItemArt from "./ItemArt";
 import "../styles/HangingAccessories.css";
 
-const RINGS = { compass: [0.64, 3], camera: [0.51, 3], bottle: [0.48, 3], book: [0.51, 3], map: [0.19, 4] };
+const RINGS = { compass: [0.64, 3], camera: [0.51, 3], bottle: [0.48, 3], book: [0.51, 3], scarf: [0.72, 12] };
 
 export default function HangingAccessories({ items, className = "" }) {
   if (!items.length) return null;
