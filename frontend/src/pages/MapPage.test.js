@@ -162,7 +162,8 @@ test("노선 조회가 실패해도 도착정보에서 접근 중인 노선을 �
     if (url === "/bus-routes") return Promise.reject(new Error("route service failed"));
     if (url === "/bus-arrival") return Promise.resolve({ data: [{
       routeId: "DJB30300042", routeName: "107", routeType: "간선버스",
-      remainingStops: 2, vehicleType: "저상버스", arrivalTime: 120,
+      remainingStops: 2, vehicleType: "저상버스", arrivalTime: 0,
+      arrivalMessage: "출발대기",
     }] });
     if (url === "/bus-location") return Promise.resolve({ data: [{
       vehicleNumber: "대전75자1234", latitude: 36.33, longitude: 127.43,
@@ -179,6 +180,8 @@ test("노선 조회가 실패해도 도착정보에서 접근 중인 노선을 �
 
   expect(await screen.findByRole("button", { name: "107" })).toBeInTheDocument();
   expect(await screen.findByText("저상버스")).toBeInTheDocument();
+  expect(screen.getByText(/출발대기/)).toBeInTheDocument();
+  expect(screen.queryByText(/약 1분 후/)).not.toBeInTheDocument();
   expect(screen.getByTestId("bus-count")).toHaveTextContent("1");
   expect(screen.getByTestId("route-point-count")).toHaveTextContent("2");
 });

@@ -145,6 +145,12 @@ class FakeSeoulArrivalsResponse:
                     "sectOrd1": "18",
                     "traTime1": "180",
                     "arrmsg1": "2번째 전",
+                    "vehId2": "0",
+                    "plainNo2": None,
+                    "busType2": "0",
+                    "sectOrd2": "12",
+                    "traTime2": "0",
+                    "arrmsg2": "출발대기",
                 }]
             },
         }
@@ -277,6 +283,8 @@ class BusApiTest(unittest.TestCase):
         self.assertEqual(arrivals[0]["remainingStops"], 2)
         self.assertEqual(arrivals[0]["vehicleType"], "저상버스")
         self.assertTrue(arrivals[0]["lowFloor"])
+        self.assertIsNone(arrivals[1]["arrivalTime"])
+        self.assertEqual(arrivals[1]["arrivalMessage"], "출발대기")
         self.assertIn("getStationByUid", get.call_args.args[0])
 
 

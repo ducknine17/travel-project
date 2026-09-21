@@ -334,7 +334,22 @@ def get_seoul_bus_arrivals(ars_id: str) -> list[dict]:
             vehicle_id = item.get(f"vehId{sequence}")
             vehicle_number = item.get(f"plainNo{sequence}")
             arrival_time = item.get(f"traTime{sequence}")
-            if not vehicle_id and not vehicle_number and arrival_time is None:
+            arrival_message = item.get(f"arrmsg{sequence}")
+
+            if str(vehicle_id or "") == "0":
+                vehicle_id = None
+            try:
+                if int(arrival_time) <= 0:
+                    arrival_time = None
+            except (TypeError, ValueError):
+                arrival_time = None
+
+            if (
+                not vehicle_id
+                and not vehicle_number
+                and arrival_time is None
+                and not arrival_message
+            ):
                 continue
 
             vehicle_code = str(item.get(f"busType{sequence}"))
@@ -362,7 +377,7 @@ def get_seoul_bus_arrivals(ars_id: str) -> list[dict]:
                 "vehicleNumber": vehicle_number,
                 "vehicleId": vehicle_id,
                 "arrivalTime": arrival_time,
-                "arrivalMessage": item.get(f"arrmsg{sequence}"),
+                "arrivalMessage": arrival_message,
             })
 
     return arrivals
