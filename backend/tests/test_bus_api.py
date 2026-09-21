@@ -8,6 +8,7 @@ import requests
 from bus_api import (
     get_osm_bus_stations,
     get_response_items,
+    get_seoul_bus_arrivals,
     get_seoul_bus_locations,
     get_seoul_bus_route_path,
     get_seoul_bus_stations,
@@ -123,6 +124,32 @@ class FakeSeoulRoutePathResponse:
         }
 
 
+class FakeSeoulArrivalsResponse:
+    def raise_for_status(self):
+        pass
+
+    def json(self):
+        return {
+            "msgHeader": {"headerCd": "0", "headerMsg": "정상 처리"},
+            "msgBody": {
+                "itemList": [{
+                    "stId": "101000227",
+                    "stNm": "시청.덕수궁",
+                    "busRouteId": "100100118",
+                    "rtNm": "701",
+                    "routeType": "3",
+                    "staOrd": "20",
+                    "vehId1": "111049708",
+                    "plainNo1": "서울74사4513",
+                    "busType1": "1",
+                    "sectOrd1": "18",
+                    "traTime1": "180",
+                    "arrmsg1": "2번째 전",
+                }]
+            },
+        }
+
+
 class BusApiTest(unittest.TestCase):
     def test_decodes_service_key_before_query_encoding(self):
         with patch.dict(os.environ, {"OPENAPI_KEY": "abc%2Fdef%2Bghi%3D%3D"}):
@@ -178,7 +205,7 @@ class BusApiTest(unittest.TestCase):
         self.assertEqual(stations[0]["id"], "100000001")
         self.assertEqual(stations[0]["arsId"], "02128")
         self.assertEqual(stations[0]["cityCode"], "11")
-        self.assertFalse(stations[0]["arrivalSupported"])
+        self.assertTrue(stations[0]["arrivalSupported"])
         self.assertTrue(stations[0]["locationSupported"])
         self.assertEqual(stations[0]["source"], "seoul-public-data")
         self.assertIn(
@@ -239,6 +266,17 @@ class BusApiTest(unittest.TestCase):
         self.assertEqual(path[0]["nodeName"], "서울역버스환승센터")
         self.assertEqual(path[0]["latitude"], "37.5666")
         self.assertIn("getStaionByRoute", get.call_args.args[0])
+
+    @patch.dict(os.environ, {"OPENAPI_KEY": "test-key"})
+    @patch("bus_api.requests.get", return_value=FakeSeoulArrivalsResponse())
+    def test_returns_seoul_low_floor_bus_arrivals(self, get):
+        arrivals = get_seoul_bus_arrivals("02662")
+
+        self.assertEqual(arrivals[0]["routeName"], "701")
+        self.assertEqual(arrivals[0]["remainingStops"], 2)
+        self.assertEqual(arrivals[0]["vehicleType"], "저상버스")
+        self.assertTrue(arrivals[0]["lowFloor"])
+        self.assertIn("getStationByUid", get.call_args.args[0])
 
 
 if __name__ == "__main__":

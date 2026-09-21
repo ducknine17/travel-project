@@ -55,16 +55,25 @@ export default function MapPage() {
     const request = ++arrivalRequest.current; ++routeRequest.current;
     setSelectedStation(station); setBusArrivals([]); setRoutes([]); setBuses([]); setRoutePath([]); setActiveRoute(""); setBusError(""); setBusLoading(true);
     try {
-      if (station.locationSupported) {
-        const r = await api.get("/bus-routes", {params: {city_code: station.cityCode, node_id: station.id, ars_id: station.arsId}});
-        if (request !== arrivalRequest.current) return;
-        setRoutes(r.data || []);
-        if (r.data?.[0]) await loadRoute(station, r.data[0].routeId);
-      }
-      if (station.arrivalSupported !== false && station.cityCode) {
-        const r = await api.get("/bus-arrival", {params: {city_code: station.cityCode, node_id: station.id}});
-        if (request === arrivalRequest.current) setBusArrivals(r.data || []);
-      }
+      const routeRequestPromise = station.locationSupported
+        ? api.get("/bus-routes", {params: {city_code: station.cityCode, node_id: station.id, ars_id: station.arsId}})
+        : Promise.resolve({data: []});
+      const arrivalRequestPromise = station.arrivalSupported !== false && station.cityCode
+        ? api.get("/bus-arrival", {params: {city_code: station.cityCode, node_id: station.id, ars_id: station.arsId}})
+        : Promise.resolve({data: []});
+      const [routeResult, arrivalResult] = await Promise.allSettled([routeRequestPromise, arrivalRequestPromise]);
+      if (request !== arrivalRequest.current) return;
+      const arrivals = arrivalResult.status === "fulfilled" ? (arrivalResult.value.data || []) : [];
+      const arrivalRoutes = Array.from(new Map(arrivals.filter(bus => bus.routeId != null).map(bus => [String(bus.routeId), {
+        routeId: String(bus.routeId), routeName: bus.routeName, routeType: bus.routeType,
+      }])).values());
+      const nextRoutes = routeResult.status === "fulfilled" && routeResult.value.data?.length
+        ? routeResult.value.data
+        : arrivalRoutes;
+      setBusArrivals(arrivals);
+      setRoutes(nextRoutes);
+      if (routeResult.status === "rejected" && arrivalResult.status === "rejected") throw routeResult.reason;
+      if (nextRoutes[0]) await loadRoute(station, nextRoutes[0].routeId);
     } catch {if (request === arrivalRequest.current) setBusError("버스 정보를 불러오지 못했어요.");}
     finally {if (request === arrivalRequest.current) setBusLoading(false);}
   }, [loadRoute]);

@@ -142,6 +142,38 @@ test("서울 정류장을 누르면 노선과 실시간 차량 위치를 지도�
   });
 });
 
+test("노선 조회가 실패해도 도착정보에서 접근 중인 노선을 복구한다", async () => {
+  api.get.mockImplementation((url) => {
+    if (url === "/places/filters") return Promise.resolve({ data: { groups: [] } });
+    if (url === "/places") return Promise.resolve({ data: { items: [] } });
+    if (url === "/bus-stations") return Promise.resolve({ data: [{
+      id: "DJB8001415", name: "대전역네거리", latitude: 36.33, longitude: 127.43,
+      cityCode: "25", arrivalSupported: true, locationSupported: true, source: "public-data",
+    }] });
+    if (url === "/bus-routes") return Promise.reject(new Error("route service failed"));
+    if (url === "/bus-arrival") return Promise.resolve({ data: [{
+      routeId: "DJB30300042", routeName: "107", routeType: "간선버스",
+      remainingStops: 2, vehicleType: "저상버스", arrivalTime: 120,
+    }] });
+    if (url === "/bus-location") return Promise.resolve({ data: [{
+      vehicleNumber: "대전75자1234", latitude: 36.33, longitude: 127.43,
+    }] });
+    if (url === "/bus-route-path") return Promise.resolve({ data: [
+      { latitude: 36.33, longitude: 127.43 }, { latitude: 36.34, longitude: 127.44 },
+    ] });
+    return Promise.reject(new Error(`unexpected request: ${url}`));
+  });
+
+  render(<MapPage />);
+  fireEvent.click(screen.getByRole("button", { name: "지도 이동" }));
+  fireEvent.click(await screen.findByRole("button", { name: "대전역네거리" }));
+
+  expect(await screen.findByRole("button", { name: "107" })).toBeInTheDocument();
+  expect(await screen.findByText("저상버스")).toBeInTheDocument();
+  expect(screen.getByTestId("bus-count")).toHaveTextContent("1");
+  expect(screen.getByTestId("route-point-count")).toHaveTextContent("2");
+});
+
 afterEach(() => {
   jest.clearAllMocks();
 });

@@ -42,6 +42,22 @@ class BusLocationTest(unittest.TestCase):
         self.assertEqual(get_bus_route_path("11", "100100118"), expected)
         get_path.assert_called_once_with("100100118")
 
+    @patch("main._get_tago_bus_arrival_items")
+    def test_uses_arrivals_to_find_routes_for_a_tago_station(self, arrivals):
+        arrivals.return_value = [
+            {"routeid": "DJB30300002", "routeno": 2, "routetp": "간선버스"},
+            {"routeid": "DJB30300002", "routeno": 2, "routetp": "간선버스"},
+            {"routeid": "DJB30300042", "routeno": 107, "routetp": "간선버스"},
+        ]
+
+        routes = get_bus_routes("25", "DJB8001415")
+
+        self.assertEqual([route["routeId"] for route in routes], [
+            "DJB30300002",
+            "DJB30300042",
+        ])
+        arrivals.assert_called_once_with("25", "DJB8001415")
+
 
 if __name__ == "__main__":
     unittest.main()

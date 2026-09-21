@@ -158,7 +158,7 @@ def get_seoul_bus_stations(latitude: float, longitude: float) -> list[dict]:
             "longitude": station_longitude,
             "cityCode": "11",
             "routes": [],
-            "arrivalSupported": False,
+            "arrivalSupported": bool(item.get("NODE_ID")),
             "locationSupported": bool(item.get("NODE_ID")),
             "source": "seoul-public-data",
         }))
@@ -189,7 +189,7 @@ def _get_seoul_realtime_response(path: str, params: dict):
     """
     url = f"{SEOUL_REALTIME_BUS_API_BASE_URL}/{path.lstrip('/')}"
     try:
-        response = requests.get(url, params=params, timeout=10)
+        response = requests.get(url, params=params, timeout=4)
         response.raise_for_status()
         return response
     except requests.RequestException as original_error:
@@ -307,6 +307,62 @@ def get_seoul_station_routes(ars_id: str) -> list[dict]:
         })
 
     return routes
+
+
+def get_seoul_bus_arrivals(ars_id: str) -> list[dict]:
+    """Return the first and second approaching buses for a Seoul stop."""
+    response = _get_seoul_realtime_response(
+        "stationinfo/getStationByUid",
+        {
+            "serviceKey": get_service_key(),
+            "arsId": ars_id,
+            "resultType": "json",
+        },
+    )
+
+    vehicle_types = {
+        "0": "일반버스",
+        "1": "저상버스",
+        "2": "굴절버스",
+    }
+    arrivals = []
+    for item in _seoul_realtime_items(response.json()):
+        for sequence in (1, 2):
+            vehicle_id = item.get(f"vehId{sequence}")
+            vehicle_number = item.get(f"plainNo{sequence}")
+            arrival_time = item.get(f"traTime{sequence}")
+            if not vehicle_id and not vehicle_number and arrival_time is None:
+                continue
+
+            vehicle_code = str(item.get(f"busType{sequence}"))
+            try:
+                remaining_stops = max(
+                    0,
+                    int(item.get("staOrd"))
+                    - int(item.get(f"sectOrd{sequence}")),
+                )
+            except (TypeError, ValueError):
+                remaining_stops = None
+
+            arrivals.append({
+                "stationId": item.get("stId"),
+                "stationName": item.get("stNm"),
+                "routeId": str(item.get("busRouteId")),
+                "routeName": item.get("rtNm"),
+                "routeType": item.get("routeType"),
+                "remainingStops": remaining_stops,
+                "vehicleType": vehicle_types.get(
+                    vehicle_code,
+                    "차량 정보 미제공",
+                ),
+                "lowFloor": vehicle_code == "1",
+                "vehicleNumber": vehicle_number,
+                "vehicleId": vehicle_id,
+                "arrivalTime": arrival_time,
+                "arrivalMessage": item.get(f"arrmsg{sequence}"),
+            })
+
+    return arrivals
 
 
 def get_osm_bus_stations(latitude: float, longitude: float) -> list[dict]:

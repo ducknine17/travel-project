@@ -23,6 +23,7 @@ import shutil
 from bus_api import (
     get_osm_bus_stations,
     get_response_items,
+    get_seoul_bus_arrivals,
     get_seoul_bus_locations,
     get_seoul_bus_route_path,
     get_seoul_bus_stations,
@@ -54,6 +55,28 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
+def _get_tago_bus_arrival_items(city_code: str, node_id: str) -> list[dict]:
+    """Return raw TAGO arrivals; these also identify routes serving a stop."""
+    url = (
+        "https://apis.data.go.kr/1613000/ArvlInfoInqireService/"
+        "getSttnAcctoArvlPrearngeInfoList"
+    )
+    response = requests.get(
+        url,
+        params={
+            "serviceKey": get_service_key(),
+            "pageNo": 1,
+            "numOfRows": 100,
+            "_type": "json",
+            "cityCode": city_code,
+            "nodeId": node_id,
+        },
+        timeout=10,
+    )
+    response.raise_for_status()
+    return get_response_items(response.json())
 
 
 @app.get("/bus-location")
@@ -112,10 +135,10 @@ def get_bus_location(
 
         return buses
 
-    except (requests.RequestException, ValueError) as e:
+    except (requests.RequestException, RuntimeError, ValueError):
         raise HTTPException(
-            status_code=500,
-            detail=f"버스 API 요청 실패: {str(e)}"
+            status_code=502,
+            detail="버스 위치정보 API 요청에 실패했습니다.",
         )
 
 
@@ -185,37 +208,26 @@ def get_bus_routes(
                 ),
             )
 
-    url = (
-        "https://apis.data.go.kr/1613000/BusRouteInfoInqireService/"
-        "getSttnThrghRouteList"
-    )
-    params = {
-        "serviceKey": get_service_key(),
-        "pageNo": 1,
-        "numOfRows": 100,
-        "_type": "json",
-        "cityCode": city_code,
-        "nodeId": node_id,
-    }
-
     try:
-        response = requests.get(url, params=params, timeout=10)
-        response.raise_for_status()
-        return [
-            {
-                "routeId": item.get("routeid"),
+        routes = []
+        seen_route_ids = set()
+        for item in _get_tago_bus_arrival_items(city_code, node_id):
+            route_id = item.get("routeid")
+            if route_id is None or str(route_id) in seen_route_ids:
+                continue
+            seen_route_ids.add(str(route_id))
+            routes.append({
+                "routeId": str(route_id),
                 "routeName": item.get("routeno"),
                 "routeType": item.get("routetp"),
-                "startName": item.get("startnodenm"),
-                "endName": item.get("endnodenm"),
-            }
-            for item in get_response_items(response.json())
-            if item.get("routeid") is not None
-        ]
-    except (requests.RequestException, RuntimeError, ValueError) as e:
+                "startName": None,
+                "endName": None,
+            })
+        return routes
+    except (requests.RequestException, RuntimeError, ValueError):
         raise HTTPException(
             status_code=502,
-            detail=f"정류장별 노선 API 요청 실패: {str(e)}",
+            detail="정류장별 접근 버스 API 요청에 실패했습니다.",
         )
 
 
@@ -249,7 +261,7 @@ def get_bus_stations(
         response = requests.get(
             url,
             params=params,
-            timeout=3
+            timeout=10
         )
 
         response.raise_for_status()
@@ -278,16 +290,13 @@ def get_bus_stations(
 
         return get_osm_bus_stations(latitude, longitude)
 
-    except (requests.RequestException, ValueError) as e:
+    except (requests.RequestException, RuntimeError, ValueError):
         try:
             return get_osm_bus_stations(latitude, longitude)
-        except (requests.RequestException, ValueError) as fallback_error:
+        except (requests.RequestException, ValueError):
             raise HTTPException(
                 status_code=502,
-                detail=(
-                    f"버스 정류장 API 요청 실패: {str(e)}; "
-                    f"보조 정류장 API 요청 실패: {str(fallback_error)}"
-                ),
+                detail="버스 정류장 API와 보조 정류장 API 요청에 실패했습니다.",
             )
 
 
@@ -295,24 +304,21 @@ def get_bus_stations(
 def get_bus_arrival(
     city_code: str,
     node_id: str,
+    ars_id: str = None,
 ):
-    url = "https://apis.data.go.kr/1613000/ArvlInfoInqireService/getSttnAcctoArvlPrearngeInfoList"
-
-    params = {
-        # OPENAPI_KEY is stored in its encoded form. Decode it here because
-        # requests encodes params; otherwise '%' becomes '%25'.
-        "serviceKey": get_service_key(),
-        "pageNo": 1,
-        "numOfRows": 100,
-        "_type": "json",
-        "cityCode": city_code,
-        "nodeId": node_id,
-    }
+    if city_code == "11":
+        if not ars_id:
+            raise HTTPException(status_code=400, detail="서울 정류장 ARS ID가 필요합니다.")
+        try:
+            return get_seoul_bus_arrivals(ars_id)
+        except (requests.RequestException, RuntimeError, ValueError):
+            raise HTTPException(
+                status_code=502,
+                detail="서울 버스 도착정보 API 요청에 실패했습니다.",
+            )
 
     try:
-        response = requests.get(url, params=params, timeout=10)
-        response.raise_for_status()
-        items = get_response_items(response.json())
+        items = _get_tago_bus_arrival_items(city_code, node_id)
 
         return [
             {
@@ -327,10 +333,10 @@ def get_bus_arrival(
             }
             for item in items
         ]
-    except (requests.RequestException, ValueError) as e:
+    except (requests.RequestException, RuntimeError, ValueError):
         raise HTTPException(
-            status_code=500,
-            detail=f"버스 도착정보 API 요청 실패: {str(e)}",
+            status_code=502,
+            detail="버스 도착정보 API 요청에 실패했습니다.",
         )
 
 
