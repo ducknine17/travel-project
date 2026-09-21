@@ -195,6 +195,7 @@ class BusApiTest(unittest.TestCase):
 
     def test_detects_seoul_coordinates(self):
         self.assertTrue(is_seoul_coordinate(37.5665, 126.9780))
+        self.assertFalse(is_seoul_coordinate(37.48965, 126.7536833))
         self.assertFalse(is_seoul_coordinate(35.1796, 129.0756))
 
     @patch.dict(os.environ, {"SEOUL_KEY": "test-key"})

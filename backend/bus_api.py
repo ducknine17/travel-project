@@ -18,9 +18,9 @@ SEOUL_REALTIME_BUS_API_BASE_URL = "http://ws.bus.go.kr/api/rest"
 SEOUL_REALTIME_BUS_HOST = "ws.bus.go.kr"
 NEARBY_STATION_RADIUS_KM = 1.5
 
-# A bounding box is sufficient for choosing the provider. If a point near the
-# city boundary is classified incorrectly, the empty-result fallback still
-# returns OSM stops.
+# This is only a fast provider-selection approximation. The southwest corner
+# of the rectangle is cut out because it belongs to Bucheon/Incheon; treating
+# it as Seoul can make a request wait on the Seoul dataset before trying TAGO.
 SEOUL_BOUNDS = {
     "min_latitude": 37.413,
     "max_latitude": 37.715,
@@ -65,6 +65,9 @@ def get_response_items(data: dict) -> list[dict]:
 
 def is_seoul_coordinate(latitude: float, longitude: float) -> bool:
     """Return whether coordinates are inside Seoul's approximate bounds."""
+    if latitude < 37.54 and longitude < 126.79:
+        return False
+
     return (
         SEOUL_BOUNDS["min_latitude"] <= latitude <= SEOUL_BOUNDS["max_latitude"]
         and SEOUL_BOUNDS["min_longitude"]

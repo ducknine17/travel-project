@@ -244,7 +244,10 @@ def get_bus_stations(
         except (requests.RequestException, RuntimeError, ValueError):
             pass
 
-        return get_osm_bus_stations(latitude, longitude)
+        # SEOUL_BOUNDS is only a coarse rectangle, so it also contains parts
+        # of nearby cities such as Bucheon and Goyang.  If Seoul returns no
+        # station, continue with TAGO before falling back to OSM.  OSM stops do
+        # not carry the city/node identifiers required for live arrivals.
 
     url = "https://apis.data.go.kr/1613000/BusSttnInfoInqireService/getCrdntPrxmtSttnList"
 
