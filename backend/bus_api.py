@@ -1,4 +1,5 @@
 import os
+import socket
 from functools import lru_cache
 from math import asin, cos, radians, sin, sqrt
 from urllib.parse import unquote
@@ -14,6 +15,7 @@ SEOUL_OPEN_DATA_BASE_URL = "http://openapi.seoul.go.kr:8088"
 SEOUL_STATION_SERVICE = "busStopLocationXyInfo"
 SEOUL_STATION_PAGE_SIZE = 1000
 SEOUL_REALTIME_BUS_API_BASE_URL = "http://ws.bus.go.kr/api/rest"
+SEOUL_REALTIME_BUS_HOST = "ws.bus.go.kr"
 NEARBY_STATION_RADIUS_KM = 1.5
 
 # A bounding box is sufficient for choosing the provider. If a point near the
@@ -178,18 +180,44 @@ def _seoul_realtime_items(data: dict) -> list[dict]:
     return items if isinstance(items, list) else []
 
 
+def _get_seoul_realtime_response(path: str, params: dict):
+    """Call Seoul's API, retrying by IP when the hostname route returns 502.
+
+    Some production networks fail only for plain-HTTP requests addressed to
+    ws.bus.go.kr. The service itself is still reachable by its resolved IPv4
+    address, but it requires the original Host header for key validation.
+    """
+    url = f"{SEOUL_REALTIME_BUS_API_BASE_URL}/{path.lstrip('/')}"
+    try:
+        response = requests.get(url, params=params, timeout=10)
+        response.raise_for_status()
+        return response
+    except requests.RequestException as original_error:
+        try:
+            address = socket.gethostbyname(SEOUL_REALTIME_BUS_HOST)
+            response = requests.get(
+                f"http://{address}/api/rest/{path.lstrip('/')}",
+                params=params,
+                headers={"Host": SEOUL_REALTIME_BUS_HOST},
+                timeout=10,
+            )
+            response.raise_for_status()
+            return response
+        except (OSError, requests.RequestException):
+            raise original_error
+
+
 def get_seoul_bus_locations(route_id: str) -> list[dict]:
     """Return real-time vehicle positions for a Seoul bus route."""
-    response = requests.get(
-        f"{SEOUL_REALTIME_BUS_API_BASE_URL}/buspos/getBusPosByRtid",
-        params={
+    response = _get_seoul_realtime_response(
+        "buspos/getBusPosByRtid",
+        {
             # This service uses the public/shared-data service key, not the
             # Seoul Open Data key used by busStopLocationXyInfo.
             "serviceKey": get_service_key(),
             "busRouteId": route_id,
             "resultType": "json",
         },
-        timeout=10,
     )
     response.raise_for_status()
 
@@ -224,14 +252,13 @@ def get_seoul_bus_locations(route_id: str) -> list[dict]:
 
 def get_seoul_bus_route_path(route_id: str) -> list[dict]:
     """Return the ordered station coordinates for a Seoul bus route."""
-    response = requests.get(
-        f"{SEOUL_REALTIME_BUS_API_BASE_URL}/busRouteInfo/getStaionByRoute",
-        params={
+    response = _get_seoul_realtime_response(
+        "busRouteInfo/getStaionByRoute",
+        {
             "serviceKey": get_service_key(),
             "busRouteId": route_id,
             "resultType": "json",
         },
-        timeout=10,
     )
     response.raise_for_status()
 
@@ -254,14 +281,13 @@ def get_seoul_bus_route_path(route_id: str) -> list[dict]:
 
 def get_seoul_station_routes(ars_id: str) -> list[dict]:
     """Return routes that pass a Seoul station identified by its ARS ID."""
-    response = requests.get(
-        f"{SEOUL_REALTIME_BUS_API_BASE_URL}/stationinfo/getRouteByStation",
-        params={
+    response = _get_seoul_realtime_response(
+        "stationinfo/getRouteByStation",
+        {
             "serviceKey": get_service_key(),
             "arsId": ars_id,
             "resultType": "json",
         },
-        timeout=10,
     )
     response.raise_for_status()
 

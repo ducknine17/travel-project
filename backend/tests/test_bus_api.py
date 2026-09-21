@@ -205,6 +205,21 @@ class BusApiTest(unittest.TestCase):
         )
 
     @patch.dict(os.environ, {"OPENAPI_KEY": "test-key"})
+    @patch("bus_api.socket.gethostbyname", return_value="175.193.202.140")
+    @patch(
+        "bus_api.requests.get",
+        side_effect=[FakeFailedResponse(), FakeSeoulBusLocationResponse()],
+    )
+    def test_retries_seoul_realtime_api_by_ip(self, get, resolve):
+        buses = get_seoul_bus_locations("100100118")
+
+        self.assertEqual(buses[0]["vehicleId"], "1234567")
+        self.assertEqual(get.call_count, 2)
+        self.assertIn("175.193.202.140", get.call_args.args[0])
+        self.assertEqual(get.call_args.kwargs["headers"]["Host"], "ws.bus.go.kr")
+        resolve.assert_called_once_with("ws.bus.go.kr")
+
+    @patch.dict(os.environ, {"OPENAPI_KEY": "test-key"})
     @patch(
         "bus_api.requests.get",
         return_value=FakeSeoulStationRoutesResponse(),
