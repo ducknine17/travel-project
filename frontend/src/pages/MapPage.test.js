@@ -9,8 +9,8 @@ jest.mock("../services/api", () => ({ get: jest.fn() }));
 jest.mock("../components/KakaoMap", () => function MockKakaoMap({
   places,
   stations,
-  buses,
-  routePath,
+  buses = [],
+  routePath = [],
   onMapMove,
   onPlaceClick,
   onStationClick,
@@ -93,16 +93,19 @@ test("서울 정류장을 누르면 노선과 실시간 차량 위치를 지도�
           latitude: 37.566254,
           longitude: 126.976921,
           cityCode: "11",
-          arrivalSupported: false,
+          arrivalSupported: true,
           locationSupported: true,
           source: "seoul-public-data",
           routes: [],
         }],
       });
     }
-    if (url === "/bus-routes") {
+    if (url === "/bus-arrival") {
       return Promise.resolve({
-        data: [{ routeId: "100100118", routeName: "701" }],
+        data: [{
+          routeId: "100100118", routeName: "701", routeType: "간선버스",
+          remainingStops: 2, vehicleType: "저상버스", arrivalTime: 120,
+        }],
       });
     }
     if (url === "/bus-location") {
@@ -132,10 +135,13 @@ test("서울 정류장을 누르면 노선과 실시간 차량 위치를 지도�
   });
   fireEvent.click(await screen.findByRole("button", { name: "시청.덕수궁" }));
 
-  expect(await screen.findByRole("button", { name: "701" })).toBeInTheDocument();
-  expect(await screen.findByText(/운행 차량 1대를 표시했습니다/)).toBeInTheDocument();
-  expect(screen.getByTestId("bus-count")).toHaveTextContent("1");
-  expect(screen.getByTestId("route-point-count")).toHaveTextContent("2");
+  fireEvent.click(await screen.findByRole("button", { name: "701" }));
+  expect(await screen.findByRole("dialog", { name: "701번 노선도" })).toBeInTheDocument();
+  expect(await screen.findByText(/운행 차량/)).toBeInTheDocument();
+  expect(screen.getByText("서울74사4513")).toBeInTheDocument();
+  expect(screen.getByText("1번째 정류장")).toBeInTheDocument();
+  expect(screen.getByTestId("bus-count")).toHaveTextContent("0");
+  expect(screen.getByTestId("route-point-count")).toHaveTextContent("0");
   expect(api.get).toHaveBeenCalledWith("/bus-location", {
     params: { city_code: "11", route_id: "100100118" },
   });
@@ -151,7 +157,7 @@ test("서울 정류장을 누르면 노선과 실시간 차량 위치를 지도�
   expect(screen.getByTestId("route-point-count")).toHaveTextContent("0");
 });
 
-test("노선 조회가 실패해도 도착정보에서 접근 중인 노선을 복구한다", async () => {
+test("도착정보에 있는 노선만 선택 목록에 표시한다", async () => {
   api.get.mockImplementation((url) => {
     if (url === "/places/filters") return Promise.resolve({ data: { groups: [] } });
     if (url === "/places") return Promise.resolve({ data: { items: [] } });
@@ -159,7 +165,6 @@ test("노선 조회가 실패해도 도착정보에서 접근 중인 노선을 �
       id: "DJB8001415", name: "대전역네거리", latitude: 36.33, longitude: 127.43,
       cityCode: "25", arrivalSupported: true, locationSupported: true, source: "public-data",
     }] });
-    if (url === "/bus-routes") return Promise.reject(new Error("route service failed"));
     if (url === "/bus-arrival") return Promise.resolve({ data: [{
       routeId: "DJB30300042", routeName: "107", routeType: "간선버스",
       remainingStops: 2, vehicleType: "저상버스", arrivalTime: 0,
@@ -178,12 +183,13 @@ test("노선 조회가 실패해도 도착정보에서 접근 중인 노선을 �
   fireEvent.click(screen.getByRole("button", { name: "지도 이동" }));
   fireEvent.click(await screen.findByRole("button", { name: "대전역네거리" }));
 
-  expect(await screen.findByRole("button", { name: "107" })).toBeInTheDocument();
+  fireEvent.click(await screen.findByRole("button", { name: "107" }));
+  expect(await screen.findByRole("dialog", { name: "107번 노선도" })).toBeInTheDocument();
   expect(await screen.findByText("저상버스")).toBeInTheDocument();
   expect(screen.getByText(/출발대기/)).toBeInTheDocument();
   expect(screen.queryByText(/약 1분 후/)).not.toBeInTheDocument();
-  expect(screen.getByTestId("bus-count")).toHaveTextContent("1");
-  expect(screen.getByTestId("route-point-count")).toHaveTextContent("2");
+  expect(screen.getByTestId("bus-count")).toHaveTextContent("0");
+  expect(screen.getByTestId("route-point-count")).toHaveTextContent("0");
 });
 
 afterEach(() => {

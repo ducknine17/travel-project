@@ -23,16 +23,17 @@ class BusLocationTest(unittest.TestCase):
         self.assertEqual(context.exception.status_code, 502)
         self.assertNotIn("serviceKey", context.exception.detail)
 
-    @patch("main.get_seoul_station_routes")
-    def test_uses_ars_id_to_get_routes_for_a_seoul_station(self, get_routes):
-        expected = [{"routeId": "100100118", "routeName": "701"}]
-        get_routes.return_value = expected
+    @patch("main.get_seoul_bus_arrivals")
+    def test_filters_routes_with_arrivals_for_the_exact_seoul_station(self, arrivals):
+        arrivals.return_value = [
+            {"routeId": "100100118", "routeName": "701", "routeType": "3"},
+            {"routeId": "100100118", "routeName": "701", "routeType": "3"},
+        ]
 
-        self.assertEqual(
-            get_bus_routes("11", "100000001", "02128"),
-            expected,
-        )
-        get_routes.assert_called_once_with("02128")
+        routes = get_bus_routes("11", "100000001", "02128")
+
+        self.assertEqual([route["routeName"] for route in routes], ["701"])
+        arrivals.assert_called_once_with("02128", "100000001")
 
     @patch("main.get_seoul_bus_route_path")
     def test_uses_seoul_api_for_route_path(self, get_path):

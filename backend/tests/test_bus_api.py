@@ -151,6 +151,18 @@ class FakeSeoulArrivalsResponse:
                     "sectOrd2": "12",
                     "traTime2": "0",
                     "arrmsg2": "출발대기",
+                }, {
+                    "stId": "204000227",
+                    "stNm": "복정파출소.복정캠퍼스맛집거리",
+                    "busRouteId": "234000069",
+                    "rtNm": "1117광주",
+                    "routeType": "3",
+                    "staOrd": "40",
+                    "vehId1": "222000001",
+                    "busType1": "0",
+                    "sectOrd1": "20",
+                    "traTime1": "1200",
+                    "arrmsg1": "20번째 전",
                 }]
             },
         }
@@ -277,7 +289,7 @@ class BusApiTest(unittest.TestCase):
     @patch.dict(os.environ, {"OPENAPI_KEY": "test-key"})
     @patch("bus_api.requests.get", return_value=FakeSeoulArrivalsResponse())
     def test_returns_seoul_low_floor_bus_arrivals(self, get):
-        arrivals = get_seoul_bus_arrivals("02662")
+        arrivals = get_seoul_bus_arrivals("02662", "101000227")
 
         self.assertEqual(arrivals[0]["routeName"], "701")
         self.assertEqual(arrivals[0]["remainingStops"], 2)
@@ -285,6 +297,7 @@ class BusApiTest(unittest.TestCase):
         self.assertTrue(arrivals[0]["lowFloor"])
         self.assertIsNone(arrivals[1]["arrivalTime"])
         self.assertEqual(arrivals[1]["arrivalMessage"], "출발대기")
+        self.assertEqual({arrival["routeName"] for arrival in arrivals}, {"701"})
         self.assertIn("getStationByUid", get.call_args.args[0])
 
 

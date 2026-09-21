@@ -27,7 +27,6 @@ from bus_api import (
     get_seoul_bus_locations,
     get_seoul_bus_route_path,
     get_seoul_bus_stations,
-    get_seoul_station_routes,
     get_service_key,
     is_seoul_coordinate,
 )
@@ -198,7 +197,22 @@ def get_bus_routes(
         if not ars_id:
             raise HTTPException(status_code=400, detail="서울 정류장 ARS ID가 필요합니다.")
         try:
-            return get_seoul_station_routes(ars_id)
+            arrivals = get_seoul_bus_arrivals(ars_id, node_id)
+            routes = []
+            seen_route_ids = set()
+            for item in arrivals:
+                route_id = item.get("routeId")
+                if route_id is None or str(route_id) in seen_route_ids:
+                    continue
+                seen_route_ids.add(str(route_id))
+                routes.append({
+                    "routeId": str(route_id),
+                    "routeName": item.get("routeName"),
+                    "routeType": item.get("routeType"),
+                    "startName": None,
+                    "endName": None,
+                })
+            return routes
         except (requests.RequestException, RuntimeError, ValueError):
             raise HTTPException(
                 status_code=502,
@@ -319,7 +333,7 @@ def get_bus_arrival(
         if not ars_id:
             raise HTTPException(status_code=400, detail="서울 정류장 ARS ID가 필요합니다.")
         try:
-            return get_seoul_bus_arrivals(ars_id)
+            return get_seoul_bus_arrivals(ars_id, node_id)
         except (requests.RequestException, RuntimeError, ValueError):
             raise HTTPException(
                 status_code=502,

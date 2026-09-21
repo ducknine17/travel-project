@@ -312,7 +312,10 @@ def get_seoul_station_routes(ars_id: str) -> list[dict]:
     return routes
 
 
-def get_seoul_bus_arrivals(ars_id: str) -> list[dict]:
+def get_seoul_bus_arrivals(
+    ars_id: str,
+    station_id: str | None = None,
+) -> list[dict]:
     """Return the first and second approaching buses for a Seoul stop."""
     response = _get_seoul_realtime_response(
         "stationinfo/getStationByUid",
@@ -330,6 +333,10 @@ def get_seoul_bus_arrivals(ars_id: str) -> list[dict]:
     }
     arrivals = []
     for item in _seoul_realtime_items(response.json()):
+        # ARS numbers are not globally unique. Seoul's endpoint can return a
+        # different municipality's stop that happens to use the same number.
+        if station_id is not None and str(item.get("stId")) != str(station_id):
+            continue
         for sequence in (1, 2):
             vehicle_id = item.get(f"vehId{sequence}")
             vehicle_number = item.get(f"plainNo{sequence}")
