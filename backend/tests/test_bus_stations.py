@@ -34,6 +34,30 @@ class BusStationsTest(unittest.TestCase):
     @patch("main.get_osm_bus_stations")
     @patch("main.requests.get")
     @patch("main.get_seoul_bus_stations", return_value=[])
+    def test_excludes_non_seoul_tago_stations_from_seoul_map(
+        self, _seoul, get, fallback
+    ):
+        get.return_value.json.return_value = {
+            "response": {
+                "header": {"resultCode": "00"},
+                "body": {"items": {"item": [{
+                    "nodeid": "GGB123",
+                    "nodenm": "광주 정류장",
+                    "gpslati": 37.5665,
+                    "gpslong": 126.9780,
+                    "citycode": "31250",
+                }]}},
+            }
+        }
+        expected = [{"id": "osm-456", "name": "서울 보조 정류장"}]
+        fallback.return_value = expected
+
+        self.assertEqual(get_bus_stations(37.5665, 126.9780), expected)
+        fallback.assert_called_once_with(37.5665, 126.9780)
+
+    @patch("main.get_osm_bus_stations")
+    @patch("main.requests.get")
+    @patch("main.get_seoul_bus_stations", return_value=[])
     def test_uses_tago_for_bucheon_near_seoul_boundary(
         self, seoul, get, fallback
     ):

@@ -236,7 +236,8 @@ def get_bus_stations(
     latitude: float,
     longitude: float
 ):
-    if is_seoul_coordinate(latitude, longitude):
+    seoul_area = is_seoul_coordinate(latitude, longitude)
+    if seoul_area:
         try:
             stations = get_seoul_bus_stations(latitude, longitude)
             if stations:
@@ -276,12 +277,17 @@ def get_bus_stations(
         stations = []
 
         for station in items:
+            city_code = station.get("citycode")
+            # Do not mix records from other municipalities into a Seoul map
+            # when the Seoul station provider is temporarily unavailable.
+            if seoul_area and str(city_code) != "11":
+                continue
             stations.append({
                 "id": station.get("nodeid"),
                 "name": station.get("nodenm"),
                 "latitude": station.get("gpslati"),
                 "longitude": station.get("gpslong"),
-                "cityCode": station.get("citycode"),
+                "cityCode": city_code,
                 "routes": [],
                 "arrivalSupported": True,
                 "locationSupported": True,

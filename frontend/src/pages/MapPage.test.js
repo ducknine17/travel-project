@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from "@testing-library/react";
+import { act, fireEvent, render, screen } from "@testing-library/react";
 import MapPage from "./MapPage";
 import api from "../services/api";
 
@@ -127,7 +127,9 @@ test("서울 정류장을 누르면 노선과 실시간 차량 위치를 지도�
   });
 
   render(<MapPage />);
-  fireEvent.click(screen.getByRole("button", { name: "지도 이동" }));
+  await act(async () => {
+    fireEvent.click(screen.getByRole("button", { name: "지도 이동" }));
+  });
   fireEvent.click(await screen.findByRole("button", { name: "시청.덕수궁" }));
 
   expect(await screen.findByRole("button", { name: "701" })).toBeInTheDocument();
@@ -140,6 +142,13 @@ test("서울 정류장을 누르면 노선과 실시간 차량 위치를 지도�
   expect(api.get).toHaveBeenCalledWith("/bus-route-path", {
     params: { city_code: "11", route_id: "100100118" },
   });
+
+  await act(async () => {
+    fireEvent.click(screen.getByRole("button", { name: "지도 이동" }));
+  });
+  expect(screen.queryByRole("heading", { name: "시청.덕수궁" })).not.toBeInTheDocument();
+  expect(screen.getByTestId("bus-count")).toHaveTextContent("0");
+  expect(screen.getByTestId("route-point-count")).toHaveTextContent("0");
 });
 
 test("노선 조회가 실패해도 도착정보에서 접근 중인 노선을 복구한다", async () => {

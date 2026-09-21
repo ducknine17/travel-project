@@ -31,6 +31,8 @@ export default function MapPage() {
   }, [selectedFilters, category, page, search, retry]);
   const handleMapMove = useCallback((latitude, longitude) => {
     const request = ++stationRequest.current;
+    ++arrivalRequest.current; ++routeRequest.current;
+    setSelectedStation(null); setBusArrivals([]); setRoutes([]); setBuses([]); setRoutePath([]); setActiveRoute(""); setBusError(""); setBusLoading(false);
     api.get("/bus-stations", {params: {latitude, longitude}}).then(r => {if (request === stationRequest.current) setStations(r.data || []);}).catch(() => {if (request === stationRequest.current) setStations([]);});
   }, []);
   const loadRoute = useCallback(async (station, routeId) => {
