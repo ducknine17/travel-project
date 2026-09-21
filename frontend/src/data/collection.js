@@ -29,6 +29,11 @@ export const normalizeCharacter = (value, fallback = "retriever") => {
   return CHARACTER_IDS.includes(value) ? value : fallback;
 };
 export const getCharacterIndex = character => Math.max(0, CHARACTER_IDS.indexOf(normalizeCharacter(character)));
+export const normalizeCustomization = value => ({
+  badges: [...new Set((Array.isArray(value?.badges) ? value.badges : []).filter(id => BADGES.some(badge => badge.id === id)))].slice(0, 5),
+  items: [...new Set((Array.isArray(value?.items) ? value.items : []).map(id => id === "map" || id === "goggles" ? "scarf" : id).filter(id => ITEMS.some(item => item.id === id)))].slice(0, 3),
+  friendName: typeof value?.friendName === "string" ? value.friendName.trim().slice(0, 16) : "",
+});
 export const readActiveCharacter = () => normalizeCharacter(localStorage.getItem(ACTIVE_CHARACTER_KEY));
 export const setActiveCharacter = character => {
   const normalized = normalizeCharacter(character);
@@ -48,6 +53,6 @@ export function getCollection(posts = [], places = []) {
 }
 
 export function readBagSettings(username) {
-  try { const value = JSON.parse(localStorage.getItem(`bef_bag:${username}`)); return { character: normalizeCharacter(value?.character), badges: Array.isArray(value?.badges) ? value.badges : [], items: Array.isArray(value?.items) ? [...new Set(value.items.map(id => id === "map" || id === "goggles" ? "scarf" : id))] : [], friendName: typeof value?.friendName === "string" ? value.friendName.slice(0, 16) : "" }; }
-  catch { return { character: "retriever", badges: [], items: [] }; }
+  try { const value = JSON.parse(localStorage.getItem(`bef_bag:${username}`)); return { character: normalizeCharacter(value?.character), ...normalizeCustomization(value) }; }
+  catch { return { character: "retriever", badges: [], items: [], friendName: "" }; }
 }

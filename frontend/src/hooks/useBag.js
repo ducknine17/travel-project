@@ -1,7 +1,15 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { profileName } from "../utils/profile";
 import api from "../services/api";
-import { getCharacterIndex, getCollection, normalizeCharacter, readBagSettings, setActiveCharacter } from "../data/collection";
+import { getCharacterIndex, getCollection, normalizeCharacter, normalizeCustomization, readBagSettings, setActiveCharacter } from "../data/collection";
+
+const hasCustomization = value => value.badges.length > 0 || value.items.length > 0 || !!value.friendName;
+const sameCustomization = (left, right) => JSON.stringify(normalizeCustomization(left)) === JSON.stringify(normalizeCustomization(right));
+const customizationPayload = value => ({
+  badges: value.badges,
+  items: value.items,
+  friend_name: value.friendName,
+});
 
 export default function useBag() {
   const [profile, setProfile] = useState({});
@@ -19,8 +27,17 @@ export default function useBag() {
       setUsername(me.data.username);
       setProfile(me.data);
       const savedSettings = readBagSettings(me.data.username);
+      const serverCustomization = normalizeCustomization(me.data.character_customization);
+      const syncKey = `bef_customization_synced:${me.data.username}`;
+      let customization = serverCustomization;
+      if (!localStorage.getItem(syncKey) && !hasCustomization(serverCustomization) && hasCustomization(savedSettings)) {
+        await api.put("/me/character-customization", customizationPayload(savedSettings));
+        customization = normalizeCustomization(savedSettings);
+      }
+      localStorage.setItem(syncKey, "1");
       const nextSettings = {
         ...savedSettings,
+        ...customization,
         character: me.data.character == null ? savedSettings.character : normalizeCharacter(me.data.character),
       };
       localStorage.setItem(`bef_bag:${me.data.username}`, JSON.stringify(nextSettings));
@@ -34,11 +51,16 @@ export default function useBag() {
   const collection = useMemo(() => getCollection(posts, places), [posts, places]);
   const saveSettings = async (next) => {
     if (!username) return false;
-    const normalized = { ...next, character: normalizeCharacter(next.character) };
+    const normalized = { ...normalizeCustomization(next), character: normalizeCharacter(next.character) };
     try {
-      if (normalized.character !== settings.character) {
-        await api.put("/me/character", { character: getCharacterIndex(normalized.character) });
-      }
+      const requests = [];
+      if (normalized.character !== settings.character) requests.push(
+        api.put("/me/character", { character: getCharacterIndex(normalized.character) })
+      );
+      if (!sameCustomization(normalized, settings)) requests.push(
+        api.put("/me/character-customization", customizationPayload(normalized))
+      );
+      await Promise.all(requests);
       localStorage.setItem(`bef_bag:${username}`, JSON.stringify(normalized));
       setSettings(normalized);
       setActiveCharacter(normalized.character);

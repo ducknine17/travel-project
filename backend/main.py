@@ -1,4 +1,5 @@
 import datetime
+import json
 import os
 from pathlib import Path
 
@@ -775,7 +776,11 @@ def me(uid: str = Depends(get_current_user_id)):
     try:
         query = '''
             SELECT uid, id, COALESCE(character, 0),
-                   to_jsonb(u)->>'display_name', to_jsonb(u)->>'avatar'
+                   to_jsonb(u)->>'display_name', to_jsonb(u)->>'avatar',
+                   COALESCE(
+                       character_customization,
+                       '{"badges":[],"items":[],"friendName":""}'::jsonb
+                   )
             FROM "user".user AS u
             WHERE uid = %s
         '''
@@ -790,6 +795,9 @@ def me(uid: str = Depends(get_current_user_id)):
             "character": result[0][2],
             "display_name": result[0][3] if len(result[0]) > 3 else None,
             "avatar": result[0][4] if len(result[0]) > 4 else None,
+            "character_customization": result[0][5] if len(result[0]) > 5 else {
+                "badges": [], "items": [], "friendName": "",
+            },
         }
     finally:
         con.close()
@@ -832,6 +840,39 @@ def update_character(
             raise HTTPException(status_code=404, detail="User not found")
         con.commit()
         return {"character": request.character}
+    except Exception:
+        con.rollback()
+        raise
+    finally:
+        cur.close()
+        con.close()
+
+
+@app.put("/me/character-customization")
+def update_character_customization(
+    request: CharacterCustomizationUpdate,
+    uid: str = Depends(get_current_user_id),
+):
+    customization = {
+        "badges": list(dict.fromkeys(request.badges)),
+        "items": list(dict.fromkeys(request.items)),
+        "friendName": request.friend_name.strip(),
+    }
+    con = db.connect()
+    cur = con.cursor()
+    try:
+        cur.execute(
+            '''
+                UPDATE "user".user
+                SET character_customization = %s::jsonb
+                WHERE uid = %s
+            ''',
+            (json.dumps(customization, ensure_ascii=False), uid),
+        )
+        if cur.rowcount != 1:
+            raise HTTPException(status_code=404, detail="User not found")
+        con.commit()
+        return customization
     except Exception:
         con.rollback()
         raise

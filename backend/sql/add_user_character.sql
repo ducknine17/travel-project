@@ -1,3 +1,5 @@
+BEGIN;
+
 ALTER TABLE "user"."user"
     ADD COLUMN IF NOT EXISTS character integer;
 
@@ -76,3 +78,5 @@ ALTER TABLE "user"."user"
 ALTER TABLE "user"."user"
     ADD CONSTRAINT user_character_allowed_check
     CHECK (character BETWEEN 0 AND 3);
+
+COMMIT;
