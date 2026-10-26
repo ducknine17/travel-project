@@ -1,5 +1,6 @@
 import Modal from "./Modal";
 import { Icon } from "./Brand";
+import { BusIllustration } from "./TransitArt";
 
 function numericOrder(value) {
   const order = Number(value);
@@ -67,9 +68,9 @@ export default function BusRouteModal({ route, station, stops, buses, loading, e
             {stopBuses.map((bus, busIndex) => {
               const lowFloor = bus.lowFloor === true || String(bus.vehicleType || "").includes("저상");
               return <span className={lowFloor ? "low-floor" : ""} key={bus.vehicleId || bus.vehicleNumber || busIndex}>
-                <Icon name="bus" size={17}/>
-                {bus.vehicleNumber || `${route.routeName}번`}
-                {lowFloor && " ♿"}
+                <BusIllustration lowFloor={lowFloor}/>
+                <b>{bus.vehicleNumber || `${route.routeName}번`}</b>
+                <small>{lowFloor ? "저상버스 ♿" : "일반버스"}</small>
               </span>;
             })}
           </div>}
